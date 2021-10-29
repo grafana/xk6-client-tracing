@@ -1,0 +1,15 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+exporters:
+  logging:
+    loglevel: debug
+    sampling_initial: 5
+    sampling_thereafter: 200
+service:
+  pipelines:
+    traces:
+      exporters: ["logging"]
+      processors: []
+      receivers: ["otlp"]
