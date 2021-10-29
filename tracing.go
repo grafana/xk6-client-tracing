@@ -69,18 +69,18 @@ func traces() pdata.Traces {
 	r := &tempopb.Trace{}
 	err := jsonpb.Unmarshal(reader, r)
 	if err != nil {
-        panic(err)
-    }
+		panic(err)
+	}
 
 	b, err := r.Marshal()
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 
 	traces, err := otlp.NewProtobufTracesUnmarshaler().UnmarshalTraces(b)
 	if err != nil {
-        panic(err)
-    }
+		panic(err)
+	}
 
 	return traces
 }
