@@ -11,6 +11,15 @@ const client = new tracing.Client({
 });
 
 export default function () {
-    client.sendFake();
+    client.send([{
+        name: "Example",
+        attributes: {
+            "test": "test"
+        },
+        status: {
+            code: 0,
+            message: "ok"
+        }
+    }]);
     sleep(1)
 }
