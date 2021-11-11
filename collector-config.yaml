@@ -2,6 +2,9 @@ receivers:
   otlp:
     protocols:
       grpc:
+  jaeger:
+    protocols:
+      grpc:
 exporters:
   logging:
     loglevel: debug
@@ -12,4 +15,4 @@ service:
     traces:
       exporters: ["logging"]
       processors: []
-      receivers: ["otlp"]
+      receivers: ["otlp", "jaeger"]

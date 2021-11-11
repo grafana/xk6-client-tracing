@@ -7,10 +7,14 @@ export let options = {
 };
 
 const client = new tracing.Client({
-    endpoint: "0.0.0.0:4317"
+    endpoint: "0.0.0.0:14250",
+    exporter: "jaeger"
 });
 
 export default function () {
+    let traces = {
+
+    }
     client.send([{
         name: "Example",
         attributes: {

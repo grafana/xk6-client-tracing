@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/consumer"
@@ -22,8 +24,28 @@ func init() {
 	modules.Register("k6/x/tracing", new(ClientTracing))
 }
 
+type exporter string
+
+const (
+	noExporter exporter = ""
+	// todo: add http
+	otlpExporter exporter = "otlp"
+	// todo: add thrift, http
+	jaegerExporter exporter = "jaeger"
+)
+
+type protocol string
+
+const (
+	httpProtocol   protocol = "http"
+	grpcProtocol   protocol = "grpc"
+	thriftProtocol protocol = "thrift"
+)
+
 type Config struct {
-	Endpoint string `json:"url"`
+	Exporter exporter `json:"type"`
+	Protocol protocol `json:"protocol"`
+	Endpoint string   `json:"url"`
 }
 
 type ClientTracing struct {
@@ -31,18 +53,36 @@ type ClientTracing struct {
 	cfg      *Config
 }
 
-func (c *ClientTracing) XClient(ctxPtr *context.Context, config Config) interface{} {
-	if config.Endpoint == "" {
-		config.Endpoint = "0.0.0.0:4317"
+func (c *ClientTracing) XClient(ctxPtr *context.Context, cfg Config) interface{} {
+	if cfg.Endpoint == "" {
+		cfg.Endpoint = "0.0.0.0:4317"
 	}
 
-	factory := otlpexporter.NewFactory()
-	cfg := factory.CreateDefaultConfig().(*otlpexporter.Config)
-	cfg.GRPCClientSettings = configgrpc.GRPCClientSettings{
-		Endpoint: config.Endpoint,
-		TLSSetting: configtls.TLSClientSetting{
-			Insecure: true,
-		},
+	var (
+		factory     component.ExporterFactory
+		exporterCfg config.Exporter
+	)
+	switch cfg.Exporter {
+	case noExporter, otlpExporter:
+		factory = otlpexporter.NewFactory()
+		exporterCfg = factory.CreateDefaultConfig()
+		exporterCfg.(*otlpexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
+			Endpoint: cfg.Endpoint,
+			TLSSetting: configtls.TLSClientSetting{
+				Insecure: true,
+			},
+		}
+	case jaegerExporter:
+		factory = jaegerexporter.NewFactory()
+		exporterCfg = factory.CreateDefaultConfig()
+		exporterCfg.(*jaegerexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
+			Endpoint: cfg.Endpoint,
+			TLSSetting: configtls.TLSClientSetting{
+				Insecure: true,
+			},
+		}
+	default:
+		return fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
 	}
 
 	exporter, err := factory.CreateTracesExporter(
@@ -55,7 +95,7 @@ func (c *ClientTracing) XClient(ctxPtr *context.Context, config Config) interfac
 			},
 			BuildInfo: component.NewDefaultBuildInfo(),
 		},
-		cfg,
+		exporterCfg,
 	)
 	if err != nil {
 		return err
@@ -67,7 +107,7 @@ func (c *ClientTracing) XClient(ctxPtr *context.Context, config Config) interfac
 	}
 
 	c.exporter = exporter
-	c.cfg = &config
+	c.cfg = &cfg
 
 	rt := common.GetRuntime(*ctxPtr)
 	return common.Bind(rt, c, ctxPtr)
@@ -84,7 +124,7 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span) error {
 		span.construct().CopyTo(ispans.Spans().AppendEmpty())
 	}
 
-	err := c.exporter.ConsumeTraces(context.Background(), traces)
+	err := c.exporter.ConsumeTraces(ctx, traces)
 	if err != nil {
 		return err
 	}
