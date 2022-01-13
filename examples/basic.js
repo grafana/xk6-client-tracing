@@ -12,9 +12,6 @@ const client = new tracing.Client({
 });
 
 export default function () {
-    let traces = {
-
-    }
     client.send([{
         name: "Example",
         attributes: {

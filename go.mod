@@ -6,7 +6,7 @@ require (
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter v0.38.0
-	go.k6.io/k6 v0.34.1
+	go.k6.io/k6 v0.35.0
 	go.opentelemetry.io/collector v0.38.0
 	go.opentelemetry.io/collector/model v0.38.0
 	go.opentelemetry.io/otel/metric v0.24.0

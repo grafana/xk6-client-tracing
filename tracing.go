@@ -2,11 +2,17 @@ package xk6_client_tracing
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
+	"unsafe"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/netext"
+	"go.k6.io/k6/stats"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config"
@@ -120,9 +126,37 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span) error {
 	rspans := traces.ResourceSpans().AppendEmpty()
 	resource.CopyTo(rspans.Resource())
 	ispans := rspans.InstrumentationLibrarySpans().AppendEmpty()
+
+	// Required for k6 metrics
+	state := lib.GetState(ctx)
+	if state == nil {
+		return errors.New("state required by k6 metrics is nil")
+	}
+	now := time.Now()
+
 	for _, span := range spans {
 		span.construct().CopyTo(ispans.Spans().AppendEmpty())
 	}
+
+	simpleNetTrail := netext.NetTrail{
+		BytesWritten: int64(unsafe.Sizeof(traces)),
+		StartTime:    now.Add(-time.Minute),
+		EndTime:      now,
+		Samples: []stats.Sample{
+			{
+				Time:   now,
+				Metric: state.BuiltinMetrics.DataSent,
+				Value:  float64(unsafe.Sizeof(traces)),
+			},
+		},
+	}
+	stats.PushIfNotDone(ctx, state.Samples, &simpleNetTrail)
+
+	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
+		Metric: stats.New("tracing_client_num_spans_sent", stats.Counter),
+		Time:   now,
+		Value:  float64(len(spans)),
+	})
 
 	err := c.exporter.ConsumeTraces(ctx, traces)
 	if err != nil {

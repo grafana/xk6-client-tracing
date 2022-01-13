@@ -8,11 +8,9 @@ This extension provides k6 with the required functionality required to load test
 
 To build the extension locally:
 ```
-xk6 build master \
+xk6 build v0.35.0 \
   --with github.com/grafana/xk6-client-tracing="$PWD/../xk6-client-tracing"
 ```
-
-**Reminder:** We can remove the master requirement once a new k6 version has been released (see https://github.com/grafana/k6/pull/2216).
 
 To run a local OTEL Collector:
 ```bash
