@@ -67,6 +67,13 @@ If you want to inspect the traceIds used by the spans, you can enable debug mode
     }]);
 ```
 
+Also, maybe, you don't want to create the spans manually, and you only care about the size of the payload. You can use the `sendBytes` method in that case:
+```javascript
+client.sendBytes(10000);
+```
+
+> Note: sendBytes also has a sendBytesDebug counterpart.
+
 ## Using the extension with Grafana Cloud
 
 TODO

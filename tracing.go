@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 	"unsafe"
 
@@ -76,7 +77,7 @@ func (c *ClientTracing) XClient(ctxPtr *context.Context, cfg Config) interface{}
 		exporterCfg.(*otlpexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
 			Endpoint: cfg.Endpoint,
 			TLSSetting: configtls.TLSClientSetting{
-				Insecure: true,
+				Insecure: false,
 			},
 		}
 	case jaegerExporter:
@@ -173,4 +174,34 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span, debug bool) erro
 
 func (c *ClientTracing) SendDebug(ctx context.Context, spans []Span) error {
 	return c.Send(ctx, spans, true)
+}
+
+func (c *ClientTracing) SendBytes(ctx context.Context, byteNumber int64, debug bool) error {
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	var spans []Span
+	var size int64
+	for {
+		if size >= byteNumber {
+			break
+		}
+
+		attr := make(map[string]interface{})
+		for i := 0; i <= rand.Intn(100-5)+5; i++ {
+			attr[newString(10)] = newString(10)
+		}
+
+		spans = append(spans, Span{
+			Name:       newString(30),
+			Attributes: attr,
+		})
+
+		size += int64(unsafe.Sizeof(spans))
+	}
+
+	return c.Send(ctx, spans, debug)
+}
+
+func (c *ClientTracing) SendBytesDebug(ctx context.Context, byteNumber int64, debug bool) error {
+	return c.SendBytes(ctx, byteNumber, true)
 }

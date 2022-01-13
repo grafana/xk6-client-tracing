@@ -1,8 +1,8 @@
 package xk6_client_tracing
 
 import (
-	"crypto/rand"
 	"encoding/binary"
+	"math/rand"
 	"time"
 
 	"go.opentelemetry.io/collector/model/pdata"
@@ -26,4 +26,14 @@ func newSegmentID() pdata.SpanID {
 		panic(err)
 	}
 	return pdata.NewSpanID(r)
+}
+
+func newString(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	s := make([]rune, n)
+	for i := range s {
+		s[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(s)
 }
