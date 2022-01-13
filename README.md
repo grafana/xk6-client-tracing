@@ -44,7 +44,8 @@ The example uses the Jaeger gRPC exporter. If you want to use OTLP gRPC, you can
 ```javascript
 const client = new tracing.Client({
     endpoint: "0.0.0.0:4317",
-    exporter: "otlp"
+    exporter: "otlp",
+    insecure: true
 });
 ```
 
@@ -76,6 +77,17 @@ client.sendBytes(10000);
 
 ## Using the extension with Grafana Cloud
 
-TODO
+You can do that, by using the OTLP exporter and setting the required auth credentials:
+```javascript
+const client = new tracing.Client({
+    endpoint: "you-tempo-endpoint:443"
+    exporter: "otlp",
+    insecure: false,
+    authentication: {
+        user: "tenant-id",
+        password: "api-token"
+    }
+});
+```
 
 

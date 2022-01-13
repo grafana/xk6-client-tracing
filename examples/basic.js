@@ -1,4 +1,4 @@
-import { check, sleep } from 'k6';
+import { sleep } from 'k6';
 import tracing from 'k6/x/tracing';
 
 export let options = {
@@ -8,7 +8,8 @@ export let options = {
 
 const client = new tracing.Client({
     endpoint: "0.0.0.0:14250",
-    exporter: "jaeger"
+    exporter: "jaeger",
+    insecure: true,
 });
 
 export default function () {
@@ -23,4 +24,8 @@ export default function () {
         }
     }]);
     sleep(1)
+}
+
+export function teardown() {
+    client.shutdown();
 }
