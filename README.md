@@ -39,3 +39,36 @@ Once that's done, you can run a test like:
 ```
 
 And see your spans on the OTEL collector logs!
+
+The example uses the Jaeger gRPC exporter. If you want to use OTLP gRPC, you can use these settings:
+```javascript
+const client = new tracing.Client({
+    endpoint: "0.0.0.0:4317",
+    exporter: "otlp"
+});
+```
+
+> Note: HTTP exporters aren't supported (yet)
+
+If you want to inspect the traceIds used by the spans, you can enable debug mode:
+```javascript
+    client.sendDebug([{
+        context: {
+            trace_id: "1",
+        },
+        name: "Example",
+        attributes: {
+            "test": "test"
+        },
+        status: {
+            code: 0,
+            message: "ok"
+        }
+    }]);
+```
+
+## Using the extension with Grafana Cloud
+
+TODO
+
+

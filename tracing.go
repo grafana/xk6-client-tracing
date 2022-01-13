@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
+	log "github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
@@ -119,7 +120,7 @@ func (c *ClientTracing) XClient(ctxPtr *context.Context, cfg Config) interface{}
 	return common.Bind(rt, c, ctxPtr)
 }
 
-func (c *ClientTracing) Send(ctx context.Context, spans []Span) error {
+func (c *ClientTracing) Send(ctx context.Context, spans []Span, debug bool) error {
 	resource := pdata.NewResource()
 
 	traces := pdata.NewTraces()
@@ -135,7 +136,17 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span) error {
 	now := time.Now()
 
 	for _, span := range spans {
-		span.construct().CopyTo(ispans.Spans().AppendEmpty())
+		cs := span.construct()
+		// This is a hack
+		if debug {
+			log.Info("Constructed span from TraceID: ", cs.TraceID().HexString())
+		}
+		cs.CopyTo(ispans.Spans().AppendEmpty())
+	}
+
+	err := c.exporter.ConsumeTraces(ctx, traces)
+	if err != nil {
+		return err
 	}
 
 	simpleNetTrail := netext.NetTrail{
@@ -157,10 +168,9 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span) error {
 		Time:   now,
 		Value:  float64(len(spans)),
 	})
-
-	err := c.exporter.ConsumeTraces(ctx, traces)
-	if err != nil {
-		return err
-	}
 	return nil
+}
+
+func (c *ClientTracing) SendDebug(ctx context.Context, spans []Span) error {
+	return c.Send(ctx, spans, true)
 }
