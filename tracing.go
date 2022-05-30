@@ -135,12 +135,36 @@ func (c *ClientTracing) XClient(ctxPtr *context.Context, cfg Config) interface{}
 }
 
 func (c *ClientTracing) Send(ctx context.Context, spans []Span, debug bool) error {
-	resource := pdata.NewResource()
+	traceData := pdata.NewTraces()
 
-	traces := pdata.NewTraces()
-	rspans := traces.ResourceSpans().AppendEmpty()
-	resource.CopyTo(rspans.Resource())
-	ispans := rspans.InstrumentationLibrarySpans().AppendEmpty()
+	// Resource
+	rss := traceData.ResourceSpans()
+	rss.EnsureCapacity(1)
+	r := rss.AppendEmpty()
+	r.Resource().Attributes().InsertString("k6", "true")
+	r.Resource().Attributes().InsertString("service.name", "example")
+
+	// Instrumentation Library
+	ilss := r.InstrumentationLibrarySpans()
+	ilss.EnsureCapacity(1)
+	ils := ilss.AppendEmpty()
+	ils.InstrumentationLibrary().SetName("k6")
+
+	// Span
+	sps := ils.Spans()
+	sps.EnsureCapacity(len(spans))
+	for e := 0; e < len(spans); e++ {
+		sps.AppendEmpty()
+	}
+
+	for i, span := range spans {
+		cs := span.construct()
+		// This is a hack
+		if debug {
+			log.Info("Constructed span from TraceID: ", cs.TraceID().HexString())
+		}
+		cs.CopyTo(sps.At(i))
+	}
 
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
@@ -149,29 +173,20 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span, debug bool) erro
 	}
 	now := time.Now()
 
-	for _, span := range spans {
-		cs := span.construct()
-		// This is a hack
-		if debug {
-			log.Info("Constructed span from TraceID: ", cs.TraceID().HexString())
-		}
-		cs.CopyTo(ispans.Spans().AppendEmpty())
-	}
-
-	err := c.exporter.ConsumeTraces(ctx, traces)
+	err := c.exporter.ConsumeTraces(ctx, traceData)
 	if err != nil {
 		return err
 	}
 
 	simpleNetTrail := netext.NetTrail{
-		BytesWritten: int64(unsafe.Sizeof(traces)),
+		BytesWritten: int64(unsafe.Sizeof(traceData)),
 		StartTime:    now.Add(-time.Minute),
 		EndTime:      now,
 		Samples: []stats.Sample{
 			{
 				Time:   now,
 				Metric: state.BuiltinMetrics.DataSent,
-				Value:  float64(unsafe.Sizeof(traces)),
+				Value:  float64(unsafe.Sizeof(1)),
 			},
 		},
 	}
@@ -180,7 +195,7 @@ func (c *ClientTracing) Send(ctx context.Context, spans []Span, debug bool) erro
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: stats.New("tracing_client_num_spans_sent", stats.Counter),
 		Time:   now,
-		Value:  float64(len(spans)),
+		Value:  float64(traceData.SpanCount()),
 	})
 	return nil
 }

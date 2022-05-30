@@ -29,11 +29,16 @@ func (s Span) construct() pdata.Span {
 	span.SetKind(pdata.SpanKindClient)
 	span.SetStartTimestamp(pdata.NewTimestampFromTime(startTime))
 	span.SetEndTimestamp(pdata.NewTimestampFromTime(endTime))
+	span.SetTraceState("x:y")
 
-	status := pdata.NewSpanStatus()
-	status.SetCode(pdata.StatusCode(s.Status.Code))
-	status.SetMessage(s.Status.Message)
-	status.CopyTo(span.Status())
+	event := span.Events().AppendEmpty()
+	event.SetName("event")
+	event.SetTimestamp(pdata.NewTimestampFromTime(startTime))
+	event.Attributes().InsertString("key", "value")
+
+	status := span.Status()
+	status.SetCode(1)
+	status.SetMessage("OK")
 
 	spanAttributes.CopyTo(span.Attributes())
 	return span
