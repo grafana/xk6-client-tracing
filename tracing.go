@@ -167,9 +167,10 @@ type TraceEntry struct {
 }
 
 type SpansEntry struct {
-	Count      int  `json:"count"`
-	Size       int  `json:"size"`
-	RandomName bool `json:"random_name"`
+	Count      int                    `json:"count"`
+	Size       int                    `json:"size"`
+	RandomName bool                   `json:"random_name"`
+	FixedAttrs map[string]interface{} `json:"fixed_attrs"`
 }
 
 func (c *Client) Push(te []TraceEntry) error {
@@ -245,6 +246,10 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 	status.SetMessage("OK")
 
 	attrs := pdata.NewAttributeMap()
+
+	if len(t.Spans.FixedAttrs) > 0 {
+		constructSpanAttributes(t.Spans.FixedAttrs, attrs)
+	}
 
 	// Fill the span with some random data
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -341,4 +346,18 @@ func newOperationName() string {
 		"shippment",
 		"bill"}
 	return "k6." + objectNames[rand.Intn(len(objectNames))] + "." + operationNames[rand.Intn(len(operationNames))]
+}
+
+func constructSpanAttributes(attributes map[string]interface{}, dst pdata.AttributeMap) {
+	attrs := pdata.NewAttributeMap()
+	for key, value := range attributes {
+		if cast, ok := value.(int); ok {
+			attrs.InsertInt(key, int64(cast))
+		} else if cast, ok := value.(int64); ok {
+			attrs.InsertInt(key, cast)
+		} else {
+			attrs.InsertString(key, fmt.Sprintf("%v", value))
+		}
+	}
+	attrs.CopyTo(dst)
 }

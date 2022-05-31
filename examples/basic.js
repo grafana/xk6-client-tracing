@@ -37,6 +37,9 @@ export default function () {
                 count: c,
                 size: randomIntBetween(300,1000),
                 random_name: true,
+                fixed_attrs: {
+                    "test": "test",
+                },
             }
         });
     }
