@@ -63,14 +63,6 @@ const (
 	jaegerExporter exporter = "jaeger"
 )
 
-type protocol string
-
-const (
-	httpProtocol   protocol = "http"
-	grpcProtocol   protocol = "grpc"
-	thriftProtocol protocol = "thrift"
-)
-
 type Client struct {
 	exporter component.TracesExporter
 	cfg      *Config
@@ -79,7 +71,6 @@ type Client struct {
 
 type Config struct {
 	Exporter       exporter `json:"type"`
-	Protocol       protocol `json:"protocol"`
 	Endpoint       string   `json:"url"`
 	Insecure       bool     `json:"insecure"`
 	Authentication struct {
@@ -170,13 +161,15 @@ func (c *ClientTracing) generateRandomTraceID() string {
 }
 
 type TraceEntry struct {
-	ID    string     `json:"id"`
-	Spans SpansEntry `json:"spans"`
+	ID                string     `json:"id"`
+	RandomServiceName bool       `json:"random_service_name"`
+	Spans             SpansEntry `json:"spans"`
 }
 
 type SpansEntry struct {
-	Count int `json:"count"`
-	Size  int `json:"size"`
+	Count      int  `json:"count"`
+	Size       int  `json:"size"`
+	RandomName bool `json:"random_name"`
 }
 
 func (c *Client) Push(te []TraceEntry) error {
@@ -199,8 +192,12 @@ func (c *Client) Push(te []TraceEntry) error {
 }
 
 func generateResource(t TraceEntry, dest pdata.ResourceSpans) {
+	serviceName := newServiceName()
+	if t.RandomServiceName {
+		serviceName += "." + newString(5)
+	}
 	dest.Resource().Attributes().InsertString("k6", "true")
-	dest.Resource().Attributes().InsertString("service.name", "k6")
+	dest.Resource().Attributes().InsertString("service.name", serviceName)
 
 	ilss := dest.InstrumentationLibrarySpans()
 	ilss.EnsureCapacity(1)
@@ -217,26 +214,31 @@ func generateResource(t TraceEntry, dest pdata.ResourceSpans) {
 
 func generateSpan(t TraceEntry, dest pdata.Span) {
 	endTime := time.Now().Round(time.Second)
-	startTime := endTime.Add(-1 * time.Second)
+	startTime := endTime.Add(-time.Duration(rand.Intn(500)+10) * time.Millisecond)
 
 	var b [16]byte
 	traceID, _ := hex.DecodeString(t.ID)
 	copy(b[:], traceID)
 
+	spanName := newOperationName()
+	if t.Spans.RandomName {
+		spanName += "." + newString(5)
+	}
+
 	span := pdata.NewSpan()
 	span.SetTraceID(pdata.NewTraceID(b))
 	span.SetSpanID(newSegmentID())
 	span.SetParentSpanID(newSegmentID())
-	span.SetName(newString(15))
+	span.SetName(spanName)
 	span.SetKind(pdata.SpanKindClient)
 	span.SetStartTimestamp(pdata.NewTimestampFromTime(startTime))
 	span.SetEndTimestamp(pdata.NewTimestampFromTime(endTime))
 	span.SetTraceState("x:y")
 
 	event := span.Events().AppendEmpty()
-	event.SetName(newString(12))
+	event.SetName(newStringWithk6Prefix(12))
 	event.SetTimestamp(pdata.NewTimestampFromTime(startTime))
-	event.Attributes().InsertString(newString(12), newString(12))
+	event.Attributes().InsertString(newStringWithk6Prefix(12), newStringWithk6Prefix(12))
 
 	status := span.Status()
 	status.SetCode(1)
@@ -252,8 +254,8 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 			break
 		}
 
-		rKey := newString(rand.Intn(15))
-		rVal := newString(rand.Intn(15))
+		rKey := newStringWithk6Prefix(rand.Intn(15))
+		rVal := newStringWithk6Prefix(rand.Intn(15))
 		attrs.InsertString(rKey, rVal)
 
 		size += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))
@@ -283,5 +285,60 @@ func newString(n int) string {
 	for i := range s {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
-	return string(s)
+	return "" + string(s)
+}
+
+func newStringWithk6Prefix(n int) string {
+	return "k6." + newString(n)
+}
+
+func newServiceName() string {
+	serviceNames := []string{
+		"redis",
+		"mysql",
+		"postgres",
+		"memcached",
+		"mongodb",
+		"elasticsearch",
+		"kafka",
+		"rabbitmq",
+		"order",
+		"payment",
+		"customer",
+		"product",
+		"inventory",
+		"shipping",
+		"billing",
+		"notification",
+		"analytics",
+		"search",
+		"recommendation",
+		"recommendation-engine",
+		"recommendation-service",
+		"recommendation-service-api",
+		"recommendation-service-impl",
+		"recommendation-service-proxy"}
+	return "k6." + serviceNames[rand.Intn(len(serviceNames))]
+}
+
+func newOperationName() string {
+	operationNames := []string{
+		"get",
+		"set",
+		"delete",
+		"create",
+		"update",
+		"delete",
+		"list",
+		"search",
+		"add",
+		"remove"}
+	objectNames := []string{
+		"customer",
+		"product",
+		"order",
+		"payment",
+		"shippment",
+		"bill"}
+	return "k6." + objectNames[rand.Intn(len(objectNames))] + "." + operationNames[rand.Intn(len(operationNames))]
 }

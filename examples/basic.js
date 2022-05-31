@@ -10,7 +10,7 @@ export let options = {
 
 const traceIDs = new SharedArray('traceIDs', function () {
     let toret = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
         toret.push(tracing.generateRandomTraceID());
     }
     return toret;
@@ -23,18 +23,20 @@ const client = new tracing.Client({
 });
 
 export default function () {
-    let pushSizeTraces = randomIntBetween(1,10);
+    let pushSizeTraces = randomIntBetween(2,3);
     let pushSizeSpans = 0;
     let t = [];
     for (let i = 0; i < pushSizeTraces; i++) {
-        let c = randomIntBetween(10,100)
+        let c = randomIntBetween(5,10)
         pushSizeSpans += c;
 
         t.push({
             id: traceIDs[Math.floor(Math.random() * traceIDs.length)],
+            random_service_name: false,
             spans: {
                 count: c,
                 size: randomIntBetween(300,1000),
+                random_name: true,
             }
         });
     }
