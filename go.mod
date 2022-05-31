@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
+	github.com/dop251/goja v0.0.0-20211022113120-dc8c55024d06
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter v0.38.0
