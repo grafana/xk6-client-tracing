@@ -180,7 +180,6 @@ func (c *Client) Push(te []TraceEntry) error {
 	rss.EnsureCapacity(len(te))
 
 	for _, t := range te {
-		traceData.ResourceSpans()
 		generateResource(t, rss.AppendEmpty())
 	}
 
