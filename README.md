@@ -1,12 +1,14 @@
 # xk6-client-tracing
 
-This extension provides k6 with the required functionality required to load test distributed tracing backends.
+> ### ⚠️ In Development
+>
+> This project is **in development** and changes a lot between commits. Use at your own risk.
 
-> :warning: This extension is in development and is not yet ready for use.
+This extension provides k6 with the required functionality required to load test distributed tracing backends.
 
 ## Getting started  
 
-To start using k6 with the extension ensure you have the prerequisites:
+To start using k6 with the extension, ensure you have the prerequisites:
 
 - [Go toolchain](https://go101.org/article/go-toolchain.html)
 - Git
@@ -18,7 +20,7 @@ Then:
 go install go.k6.io/xk6/cmd/xk6@latest
 ```
 
-2. Build the extension:
+2. Build the binary:
 ```shell
 xk6 build --with github.com/grafana/xk6-client-tracing@latest
 ```
