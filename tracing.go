@@ -192,6 +192,13 @@ func (c *Client) Push(te []TraceEntry) error {
 	return nil
 }
 
+func (c *Client) PushDebug(te []TraceEntry) error {
+	for _, t := range te {
+		log.Info("Pushing traceID=", t.ID, " spans=", t.Spans.Count, " size=", t.Spans.Size)
+	}
+	return c.Push(te)
+}
+
 func generateResource(t TraceEntry, dest pdata.ResourceSpans) {
 	serviceName := newServiceName()
 	if t.RandomServiceName {
