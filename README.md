@@ -18,15 +18,9 @@ Then:
 go install go.k6.io/xk6/cmd/xk6@latest
 ```
 
-2. Clone the repo:
+2. Build the extension:
 ```shell
-git clone  github.com/grafana/xk6-client-tracing; cd xk6-client-tracing
-```
-
-3. Build the extension:
-```shell
-xk6 build  \                                          
-  --with github.com/grafana/xk6-client-tracing="$PWD/../xk6-client-tracing"
+xk6 build --with github.com/grafana/xk6-client-tracing@latest
 ```
 
 Once you've your new binary ready, you can run a local OTEL collector:
