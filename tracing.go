@@ -77,6 +77,7 @@ type Config struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
 	}
+	Headers map[string]string `json:"headers"`
 }
 
 func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
@@ -104,9 +105,9 @@ func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: map[string]string{
+			Headers: mergeMaps(map[string]string{
 				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
-			},
+			}, cfg.Headers),
 		}
 	case jaegerExporter:
 		factory = jaegerexporter.NewFactory()
@@ -116,9 +117,9 @@ func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: map[string]string{
+			Headers: mergeMaps(map[string]string{
 				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
-			},
+			}, cfg.Headers),
 		}
 	default:
 		log.Fatal(fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter))
@@ -366,4 +367,14 @@ func constructSpanAttributes(attributes map[string]interface{}, dst pdata.Attrib
 		}
 	}
 	attrs.CopyTo(dst)
+}
+
+func mergeMaps(ms ...map[string]string) map[string]string {
+	result := make(map[string]string)
+	for _, m := range ms {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
 }
