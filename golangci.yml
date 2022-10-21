@@ -18,3 +18,9 @@ linters:
     - unconvert
     - unparam
     - unused
+
+linter-settings:
+
+issues:
+  exclude:
+    - "var-naming: don't use an underscore in package name"
