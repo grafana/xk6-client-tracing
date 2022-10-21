@@ -1,0 +1,20 @@
+run:
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gofmt
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - megacheck
+    - misspell
+    - revive
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
