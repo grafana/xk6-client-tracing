@@ -44,11 +44,11 @@ func (r *tracingClientModule) NewModuleInstance(vu modules.VU) modules.Instance 
 	return &ClientTracing{vu: vu}
 }
 
-func (r *ClientTracing) Exports() modules.Exports {
+func (ct *ClientTracing) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Client":                r.xclient,
-			"generateRandomTraceID": r.generateRandomTraceID,
+			"Client":                ct.xclient,
+			"generateRandomTraceID": ct.generateRandomTraceID,
 		},
 	}
 }
@@ -80,9 +80,9 @@ type Config struct {
 	Headers map[string]string `json:"headers"`
 }
 
-func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
+func (ct *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 	var cfg Config
-	rt := c.vu.Runtime()
+	rt := ct.vu.Runtime()
 	err := rt.ExportTo(g.Argument(0), &cfg)
 	if err != nil {
 		common.Throw(rt, fmt.Errorf("Client constructor expects first argument to be Config"))
@@ -140,7 +140,7 @@ func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 	if err != nil {
 		log.Fatal(err)
 	}
-	exporter.Start(context.Background(), componenttest.NewNopHost())
+	_ = exporter.Start(context.Background(), componenttest.NewNopHost())
 
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to create exporter: %v", err))
@@ -149,11 +149,11 @@ func (c *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 	return rt.ToValue(&Client{
 		exporter: exporter,
 		cfg:      &cfg,
-		vu:       c.vu,
+		vu:       ct.vu,
 	}).ToObject(rt)
 }
 
-func (c *ClientTracing) generateRandomTraceID() string {
+func (ct *ClientTracing) generateRandomTraceID() string {
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
 		return ""

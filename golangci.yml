@@ -1,0 +1,26 @@
+run:
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gofmt
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - megacheck
+    - misspell
+    - revive
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+
+linter-settings:
+
+issues:
+  exclude:
+    - "var-naming: don't use an underscore in package name"
