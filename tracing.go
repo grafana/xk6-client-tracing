@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/dop251/goja"
+	"github.com/grafana/xk6-client-tracing/pkg/random"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	log "github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
@@ -154,11 +155,7 @@ func (ct *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 }
 
 func (ct *ClientTracing) generateRandomTraceID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(bytes)
+	return random.TraceID().HexString()
 }
 
 type TraceEntry struct {
@@ -200,9 +197,9 @@ func (c *Client) PushDebug(te []TraceEntry) error {
 }
 
 func generateResource(t TraceEntry, dest pdata.ResourceSpans) {
-	serviceName := newServiceName()
+	serviceName := random.Service()
 	if t.RandomServiceName {
-		serviceName += "." + newString(5)
+		serviceName += "." + random.String(5)
 	}
 	dest.Resource().Attributes().InsertString("k6", "true")
 	dest.Resource().Attributes().InsertString("service.name", serviceName)
@@ -228,15 +225,15 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 	traceID, _ := hex.DecodeString(t.ID)
 	copy(b[:], traceID)
 
-	spanName := newOperationName()
+	spanName := random.Operation()
 	if t.Spans.RandomName {
-		spanName += "." + newString(5)
+		spanName += "." + random.String(5)
 	}
 
 	span := pdata.NewSpan()
 	span.SetTraceID(pdata.NewTraceID(b))
-	span.SetSpanID(newSegmentID())
-	span.SetParentSpanID(newSegmentID())
+	span.SetSpanID(random.SpanID())
+	span.SetParentSpanID(random.SpanID())
 	span.SetName(spanName)
 	span.SetKind(pdata.SpanKindClient)
 	span.SetStartTimestamp(pdata.NewTimestampFromTime(startTime))
@@ -244,9 +241,9 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 	span.SetTraceState("x:y")
 
 	event := span.Events().AppendEmpty()
-	event.SetName(newStringWithk6Prefix(12))
+	event.SetName(random.K6String(12))
 	event.SetTimestamp(pdata.NewTimestampFromTime(startTime))
-	event.Attributes().InsertString(newStringWithk6Prefix(12), newStringWithk6Prefix(12))
+	event.Attributes().InsertString(random.K6String(12), random.K6String(12))
 
 	status := span.Status()
 	status.SetCode(1)
@@ -259,15 +256,14 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 	}
 
 	// Fill the span with some random data
-	rand.Seed(time.Now().UTC().UnixNano())
 	var size int64
 	for {
 		if size >= int64(t.Spans.Size) {
 			break
 		}
 
-		rKey := newStringWithk6Prefix(rand.Intn(15))
-		rVal := newStringWithk6Prefix(rand.Intn(15))
+		rKey := random.K6String(rand.Intn(15))
+		rVal := random.K6String(rand.Intn(15))
 		attrs.InsertString(rKey, rVal)
 
 		size += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))
@@ -279,80 +275,6 @@ func generateSpan(t TraceEntry, dest pdata.Span) {
 
 func (c *Client) Shutdown() error {
 	return c.exporter.Shutdown(context.Background())
-}
-
-func newSegmentID() pdata.SpanID {
-	var r [8]byte
-	_, err := rand.Read(r[:])
-	if err != nil {
-		panic(err)
-	}
-	return pdata.NewSpanID(r)
-}
-
-func newString(n int) string {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-	s := make([]rune, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
-	}
-	return "" + string(s)
-}
-
-func newStringWithk6Prefix(n int) string {
-	return "k6." + newString(n)
-}
-
-func newServiceName() string {
-	serviceNames := []string{
-		"redis",
-		"mysql",
-		"postgres",
-		"memcached",
-		"mongodb",
-		"elasticsearch",
-		"kafka",
-		"rabbitmq",
-		"order",
-		"payment",
-		"customer",
-		"product",
-		"inventory",
-		"shipping",
-		"billing",
-		"notification",
-		"analytics",
-		"search",
-		"recommendation",
-		"recommendation-engine",
-		"recommendation-service",
-		"recommendation-service-api",
-		"recommendation-service-impl",
-		"recommendation-service-proxy"}
-	return "k6." + serviceNames[rand.Intn(len(serviceNames))]
-}
-
-func newOperationName() string {
-	operationNames := []string{
-		"get",
-		"set",
-		"delete",
-		"create",
-		"update",
-		"delete",
-		"list",
-		"search",
-		"add",
-		"remove"}
-	objectNames := []string{
-		"customer",
-		"product",
-		"order",
-		"payment",
-		"shippment",
-		"bill"}
-	return "k6." + objectNames[rand.Intn(len(objectNames))] + "." + operationNames[rand.Intn(len(operationNames))]
 }
 
 func constructSpanAttributes(attributes map[string]interface{}, dst pdata.AttributeMap) {
