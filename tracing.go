@@ -3,15 +3,12 @@ package xk6_client_tracing
 import (
 	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"os"
-	"time"
-	"unsafe"
 
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-client-tracing/pkg/random"
+	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	log "github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
@@ -158,27 +155,14 @@ func (ct *ClientTracing) generateRandomTraceID() string {
 	return random.TraceID().HexString()
 }
 
-type TraceEntry struct {
-	ID                string     `json:"id"`
-	RandomServiceName bool       `json:"random_service_name"`
-	Spans             SpansEntry `json:"spans"`
-}
-
-type SpansEntry struct {
-	Count      int                    `json:"count"`
-	Size       int                    `json:"size"`
-	RandomName bool                   `json:"random_name"`
-	FixedAttrs map[string]interface{} `json:"fixed_attrs"`
-}
-
-func (c *Client) Push(te []TraceEntry) error {
+func (c *Client) Push(te []tracegen.TraceEntry) error {
 	traceData := pdata.NewTraces()
 
 	rss := traceData.ResourceSpans()
 	rss.EnsureCapacity(len(te))
 
 	for _, t := range te {
-		generateResource(t, rss.AppendEmpty())
+		tracegen.GenerateResource(t, rss.AppendEmpty())
 	}
 
 	err := c.exporter.ConsumeTraces(context.Background(), traceData)
@@ -189,106 +173,15 @@ func (c *Client) Push(te []TraceEntry) error {
 	return nil
 }
 
-func (c *Client) PushDebug(te []TraceEntry) error {
+func (c *Client) PushDebug(te []tracegen.TraceEntry) error {
 	for _, t := range te {
 		log.Info("Pushing traceID=", t.ID, " spans=", t.Spans.Count, " size=", t.Spans.Size)
 	}
 	return c.Push(te)
 }
 
-func generateResource(t TraceEntry, dest pdata.ResourceSpans) {
-	serviceName := random.Service()
-	if t.RandomServiceName {
-		serviceName += "." + random.String(5)
-	}
-	dest.Resource().Attributes().InsertString("k6", "true")
-	dest.Resource().Attributes().InsertString("service.name", serviceName)
-
-	ilss := dest.InstrumentationLibrarySpans()
-	ilss.EnsureCapacity(1)
-	ils := ilss.AppendEmpty()
-	ils.InstrumentationLibrary().SetName("k6")
-
-	// Spans
-	sps := ils.Spans()
-	sps.EnsureCapacity(t.Spans.Count)
-	for e := 0; e < t.Spans.Count; e++ {
-		generateSpan(t, sps.AppendEmpty())
-	}
-}
-
-func generateSpan(t TraceEntry, dest pdata.Span) {
-	endTime := time.Now().Round(time.Second)
-	startTime := endTime.Add(-time.Duration(rand.Intn(500)+10) * time.Millisecond)
-
-	var b [16]byte
-	traceID, _ := hex.DecodeString(t.ID)
-	copy(b[:], traceID)
-
-	spanName := random.Operation()
-	if t.Spans.RandomName {
-		spanName += "." + random.String(5)
-	}
-
-	span := pdata.NewSpan()
-	span.SetTraceID(pdata.NewTraceID(b))
-	span.SetSpanID(random.SpanID())
-	span.SetParentSpanID(random.SpanID())
-	span.SetName(spanName)
-	span.SetKind(pdata.SpanKindClient)
-	span.SetStartTimestamp(pdata.NewTimestampFromTime(startTime))
-	span.SetEndTimestamp(pdata.NewTimestampFromTime(endTime))
-	span.SetTraceState("x:y")
-
-	event := span.Events().AppendEmpty()
-	event.SetName(random.K6String(12))
-	event.SetTimestamp(pdata.NewTimestampFromTime(startTime))
-	event.Attributes().InsertString(random.K6String(12), random.K6String(12))
-
-	status := span.Status()
-	status.SetCode(1)
-	status.SetMessage("OK")
-
-	attrs := pdata.NewAttributeMap()
-
-	if len(t.Spans.FixedAttrs) > 0 {
-		constructSpanAttributes(t.Spans.FixedAttrs, attrs)
-	}
-
-	// Fill the span with some random data
-	var size int64
-	for {
-		if size >= int64(t.Spans.Size) {
-			break
-		}
-
-		rKey := random.K6String(rand.Intn(15))
-		rVal := random.K6String(rand.Intn(15))
-		attrs.InsertString(rKey, rVal)
-
-		size += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))
-	}
-
-	attrs.CopyTo(span.Attributes())
-	span.CopyTo(dest)
-}
-
 func (c *Client) Shutdown() error {
 	return c.exporter.Shutdown(context.Background())
-}
-
-func constructSpanAttributes(attributes map[string]interface{}, dst pdata.AttributeMap) {
-	attrs := pdata.NewAttributeMap()
-	for key, value := range attributes {
-		if cast, ok := value.(int); ok {
-			attrs.InsertInt(key, int64(cast))
-		} else if cast, ok := value.(int64); ok {
-			attrs.InsertInt(key, cast)
-		} else {
-			attrs.InsertString(key, fmt.Sprintf("%v", value))
-		}
-	}
-	attrs.CopyTo(dst)
 }
 
 func mergeMaps(ms ...map[string]string) map[string]string {
