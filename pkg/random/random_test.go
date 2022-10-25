@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 const (
@@ -101,21 +102,21 @@ func TestK6String(t *testing.T) {
 }
 
 func TestSpanID(t *testing.T) {
-	var prev [8]byte
+	var prev pcommon.SpanID
 	for i := 0; i < testRounds; i++ {
 		id := SpanID()
 		assert.False(t, id.IsEmpty())
-		assert.NotEqual(t, prev, id.Bytes())
-		prev = id.Bytes()
+		assert.NotEqual(t, prev, id)
+		prev = id
 	}
 }
 
 func TestTraceID(t *testing.T) {
-	var prev [16]byte
+	var prev pcommon.TraceID
 	for i := 0; i < testRounds; i++ {
 		id := TraceID()
 		assert.False(t, id.IsEmpty())
-		assert.NotEqual(t, prev, id.Bytes())
-		prev = id.Bytes()
+		assert.NotEqual(t, prev, id)
+		prev = id
 	}
 }

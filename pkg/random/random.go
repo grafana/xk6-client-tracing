@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 
-	"go.opentelemetry.io/collector/model/pdata"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 var (
@@ -83,14 +83,14 @@ func OperationForResource(resource string) string {
 	return op + "-" + resource
 }
 
-func TraceID() pdata.TraceID {
+func TraceID() pcommon.TraceID {
 	var b [16]byte
 	_, _ = rand.Read(b[:]) // always returns nil error
-	return pdata.NewTraceID(b)
+	return b
 }
 
-func SpanID() pdata.SpanID {
+func SpanID() pcommon.SpanID {
 	var b [8]byte
 	_, _ = rand.Read(b[:]) // always returns nil error
-	return pdata.NewSpanID(b)
+	return b
 }
