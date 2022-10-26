@@ -25,25 +25,35 @@ type SpansEntry struct {
 	FixedAttrs map[string]interface{} `json:"fixed_attrs"`
 }
 
-func GenerateResource(t TraceEntry, dest ptrace.ResourceSpans) {
-	serviceName := random.Service()
-	if t.RandomServiceName {
-		serviceName += "." + random.String(5)
-	}
-	dest.Resource().Attributes().PutStr("k6", "true")
-	dest.Resource().Attributes().PutStr("service.name", serviceName)
+func GenerateResource(traceEntries []TraceEntry) ptrace.Traces {
+	traceData := ptrace.NewTraces()
 
-	ilss := dest.ScopeSpans()
-	ilss.EnsureCapacity(1)
-	ils := ilss.AppendEmpty()
-	ils.Scope().SetName("k6")
+	resourceSpans := traceData.ResourceSpans()
+	resourceSpans.EnsureCapacity(len(traceEntries))
 
-	// Spans
-	sps := ils.Spans()
-	sps.EnsureCapacity(t.Spans.Count)
-	for e := 0; e < t.Spans.Count; e++ {
-		generateSpan(t, sps.AppendEmpty())
+	for _, te := range traceEntries {
+		rspan := resourceSpans.AppendEmpty()
+		serviceName := random.Service()
+		if te.RandomServiceName {
+			serviceName += "." + random.String(5)
+		}
+		rspan.Resource().Attributes().PutStr("k6", "true")
+		rspan.Resource().Attributes().PutStr("service.name", serviceName)
+
+		ilss := rspan.ScopeSpans()
+		ilss.EnsureCapacity(1)
+		ils := ilss.AppendEmpty()
+		ils.Scope().SetName("k6")
+
+		// Spans
+		sps := ils.Spans()
+		sps.EnsureCapacity(te.Spans.Count)
+		for e := 0; e < te.Spans.Count; e++ {
+			generateSpan(te, sps.AppendEmpty())
+		}
 	}
+
+	return traceData
 }
 
 func generateSpan(t TraceEntry, dest ptrace.Span) {

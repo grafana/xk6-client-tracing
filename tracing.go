@@ -19,7 +19,6 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -156,14 +155,7 @@ func (ct *ClientTracing) generateRandomTraceID() string {
 }
 
 func (c *Client) Push(te []tracegen.TraceEntry) error {
-	traceData := ptrace.NewTraces()
-
-	rss := traceData.ResourceSpans()
-	rss.EnsureCapacity(len(te))
-
-	for _, t := range te {
-		tracegen.GenerateResource(t, rss.AppendEmpty())
-	}
+	traceData := tracegen.GenerateResource(te)
 
 	err := c.exporter.ConsumeTraces(context.Background(), traceData)
 	if err != nil {
