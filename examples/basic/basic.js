@@ -43,7 +43,11 @@ export default function () {
             }
         });
     }
-    client.push(t);
+
+    let gen = new tracing.ParameterizedGenerator(t)
+    let traces = gen.traces()
+    client.push(traces);
+
     console.log(`Pushed ${pushSizeSpans} spans from ${pushSizeTraces} different traces. Here is a random traceID: ${t[Math.floor(Math.random() * t.length)].id}`);
     sleep(15);
 }

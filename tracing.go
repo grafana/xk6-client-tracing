@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"os"
 
 	"github.com/dop251/goja"
@@ -44,8 +45,9 @@ func (r *tracingClientModule) NewModuleInstance(vu modules.VU) modules.Instance 
 func (ct *ClientTracing) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Client":                ct.xclient,
-			"generateRandomTraceID": ct.generateRandomTraceID,
+			"Client":                 ct.NewClient,
+			"ParameterizedGenerator": ct.NewParameterizedGenerator,
+			"generateRandomTraceID":  ct.generateRandomTraceID,
 		},
 	}
 }
@@ -77,12 +79,13 @@ type Config struct {
 	Headers map[string]string `json:"headers"`
 }
 
-func (ct *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
-	var cfg Config
+func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
 	rt := ct.vu.Runtime()
+
+	var cfg Config
 	err := rt.ExportTo(g.Argument(0), &cfg)
 	if err != nil {
-		common.Throw(rt, fmt.Errorf("Client constructor expects first argument to be Config"))
+		common.Throw(rt, fmt.Errorf("client constructor expects first argument to be Config"))
 	}
 
 	if cfg.Endpoint == "" {
@@ -150,26 +153,30 @@ func (ct *ClientTracing) xclient(g goja.ConstructorCall) *goja.Object {
 	}).ToObject(rt)
 }
 
+func (ct *ClientTracing) NewParameterizedGenerator(g goja.ConstructorCall) *goja.Object {
+	rt := ct.vu.Runtime()
+
+	var traceParams []*tracegen.TraceParams
+	err := rt.ExportTo(g.Argument(0), &traceParams)
+	if err != nil {
+		common.Throw(rt, fmt.Errorf("the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
+	}
+	generator := tracegen.NewParameterizedGenerator(traceParams)
+
+	return rt.ToValue(generator).ToObject(rt)
+}
+
 func (ct *ClientTracing) generateRandomTraceID() string {
 	return random.TraceID().HexString()
 }
 
-func (c *Client) Push(te []tracegen.TraceEntry) error {
-	traceData := tracegen.GenerateResource(te)
-
-	err := c.exporter.ConsumeTraces(context.Background(), traceData)
+func (c *Client) Push(traces ptrace.Traces) error {
+	err := c.exporter.ConsumeTraces(context.Background(), traces)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (c *Client) PushDebug(te []tracegen.TraceEntry) error {
-	for _, t := range te {
-		log.Info("Pushing traceID=", t.ID, " spans=", t.Spans.Count, " size=", t.Spans.Size)
-	}
-	return c.Push(te)
 }
 
 func (c *Client) Shutdown() error {
