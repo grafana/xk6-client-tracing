@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"os"
+	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-client-tracing/pkg/random"
@@ -42,28 +43,37 @@ func init() {
 	modules.Register("k6/x/tracing", new(RootModule))
 }
 
-type RootModule struct{}
+type RootModule struct {
+	sync.Mutex
+}
 
 func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	return &TracingModule{
-		vu: vu,
+		vu:                  vu,
+		paramGenerators:     make(map[*goja.Object]*tracegen.ParameterizedGenerator),
+		templatedGenerators: make(map[*goja.Object]*tracegen.TemplatedGenerator),
 	}
 }
 
 type TracingModule struct {
-	vu     modules.VU
-	client *Client
+	vu                  modules.VU
+	client              *Client
+	paramGenerators     map[*goja.Object]*tracegen.ParameterizedGenerator
+	templatedGenerators map[*goja.Object]*tracegen.TemplatedGenerator
 }
 
 func (ct *TracingModule) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
 			// constants
+			"SEMANTICS_HTTP":  tracegen.SemanticsHTTP,
+			"SEMANTICS_DB":    tracegen.SemanticsDB,
 			"EXPORTER_OTLP":   exporterOTLP,
 			"EXPORTER_JAEGER": exporterJaeger,
 			// constructors
 			"Client":                 ct.newClient,
 			"ParameterizedGenerator": ct.newParameterizedGenerator,
+			"TemplatedGenerator":     ct.newTemplatedGenerator,
 			// functions
 			"generateRandomTraceID": ct.generateRandomTraceID,
 		},
@@ -88,12 +98,43 @@ func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *go
 }
 
 func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
-	var traceParams []*tracegen.TraceParams
-	err := rt.ExportTo(g.Argument(0), &traceParams)
-	if err != nil {
-		common.Throw(rt, errors.Wrap(err, "the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
+	paramVal := g.Argument(0)
+	paramObj := paramVal.ToObject(rt)
+
+	generator, found := ct.paramGenerators[paramObj]
+	if !found {
+		var param []tracegen.TraceParams
+		err := rt.ExportTo(paramVal, &param)
+		if err != nil {
+			common.Throw(rt, errors.Wrap(err, "the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
+		}
+
+		generator = tracegen.NewParameterizedGenerator(param)
+		ct.paramGenerators[paramObj] = generator
 	}
-	generator := tracegen.NewParameterizedGenerator(traceParams)
+
+	return rt.ToValue(generator).ToObject(rt)
+}
+
+func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+	tmplVal := g.Argument(0)
+	tmplObj := tmplVal.ToObject(rt)
+
+	generator, found := ct.templatedGenerators[tmplObj]
+	if !found {
+		var tmpl tracegen.TraceTemplate
+		err := rt.ExportTo(tmplVal, &tmpl)
+		if err != nil {
+			common.Throw(rt, errors.Wrap(err, "the TemplatedGenerator constructor expects first argument to be TraceTemplate"))
+		}
+
+		generator, err = tracegen.NewTemplatedGenerator(&tmpl)
+		if err != nil {
+			common.Throw(rt, errors.Wrap(err, "unable to generate TemplatedGenerator"))
+		}
+		
+		ct.templatedGenerators[tmplObj] = generator
+	}
 
 	return rt.ToValue(generator).ToObject(rt)
 }

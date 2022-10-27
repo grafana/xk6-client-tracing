@@ -25,14 +25,14 @@ type SpanParams struct {
 	FixedAttrs map[string]interface{} `json:"fixed_attrs"`
 }
 
-func NewParameterizedGenerator(traceParams []*TraceParams) *ParameterizedGenerator {
+func NewParameterizedGenerator(traceParams []TraceParams) *ParameterizedGenerator {
 	return &ParameterizedGenerator{
 		traceParams: traceParams,
 	}
 }
 
 type ParameterizedGenerator struct {
-	traceParams []*TraceParams
+	traceParams []TraceParams
 }
 
 func (g *ParameterizedGenerator) Traces() ptrace.Traces {
@@ -59,7 +59,7 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		sps := ils.Spans()
 		sps.EnsureCapacity(te.Spans.Count)
 		for e := 0; e < te.Spans.Count; e++ {
-			g.generateSpan(te, sps.AppendEmpty())
+			g.generateSpan(&te, sps.AppendEmpty())
 		}
 	}
 

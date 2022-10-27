@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
@@ -41,6 +42,11 @@ func String(n int) string {
 
 func K6String(n int) string {
 	return "k6." + String(n)
+}
+
+func Duration(min, max time.Duration) time.Duration {
+	n := rand.Int63n(int64(max) - int64(min))
+	return min + time.Duration(n)
 }
 
 func HTTPStatusSuccess() int {
