@@ -18,7 +18,7 @@ const traceIDs = new SharedArray('traceIDs', function () {
 
 const client = new tracing.Client({
     endpoint: "otel-collector:4317",
-    exporter: "otlp",
+    exporter: tracing.EXPORTER_OTLP,
     insecure: true,
 });
 

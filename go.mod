@@ -13,6 +13,7 @@ require (
 	go.opentelemetry.io/otel/metric v0.32.1
 	go.opentelemetry.io/otel/trace v1.11.1
 	go.uber.org/zap v1.23.0
+	gopkg.in/guregu/null.v4 v4.0.0
 )
 
 require (

@@ -3,7 +3,7 @@ package xk6_client_tracing
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"os"
 
@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/xk6-client-tracing/pkg/random"
 	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
-	log "github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
@@ -26,52 +25,87 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type exporterType string
+
+const (
+	exporterNone   exporterType = ""
+	exporterOTLP   exporterType = "otlp"
+	exporterJaeger exporterType = "jaeger"
+)
+
+var (
+	_ modules.Module   = &RootModule{}
+	_ modules.Instance = &TracingModule{}
+)
+
 func init() {
-	modules.Register("k6/x/tracing", new(tracingClientModule))
+	modules.Register("k6/x/tracing", new(RootModule))
 }
 
-type ClientTracing struct {
-	vu modules.VU
+type RootModule struct{}
+
+func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
+	return &TracingModule{
+		vu: vu,
+	}
 }
 
-type tracingClientModule struct{}
-
-var _ modules.Module = &tracingClientModule{}
-
-func (r *tracingClientModule) NewModuleInstance(vu modules.VU) modules.Instance {
-	return &ClientTracing{vu: vu}
+type TracingModule struct {
+	vu     modules.VU
+	client *Client
 }
 
-func (ct *ClientTracing) Exports() modules.Exports {
+func (ct *TracingModule) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Client":                 ct.NewClient,
-			"ParameterizedGenerator": ct.NewParameterizedGenerator,
-			"generateRandomTraceID":  ct.generateRandomTraceID,
+			// constants
+			"EXPORTER_OTLP":   exporterOTLP,
+			"EXPORTER_JAEGER": exporterJaeger,
+			// constructors
+			"Client":                 ct.newClient,
+			"ParameterizedGenerator": ct.newParameterizedGenerator,
+			// functions
+			"generateRandomTraceID": ct.generateRandomTraceID,
 		},
 	}
 }
 
-type exporter string
+func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+	var cfg ClientConfig
+	err := rt.ExportTo(g.Argument(0), &cfg)
+	if err != nil {
+		common.Throw(rt, errors.Wrap(err, "unable to create client: constructor expects first argument to be ClientConfig"))
+	}
 
-const (
-	noExporter exporter = ""
-	// todo: add http
-	otlpExporter exporter = "otlp"
-	// todo: add thrift, http
-	jaegerExporter exporter = "jaeger"
-)
+	if ct.client == nil {
+		ct.client, err = NewClient(&cfg, ct.vu)
+		if err != nil {
+			common.Throw(rt, errors.Wrap(err, "unable to create client"))
+		}
+	}
 
-type Client struct {
-	exporter component.TracesExporter
-	cfg      *Config
-	vu       modules.VU
+	return rt.ToValue(ct.client).ToObject(rt)
 }
 
-type Config struct {
-	Exporter       exporter `json:"type"`
-	Endpoint       string   `json:"url"`
-	Insecure       bool     `json:"insecure"`
+func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+	var traceParams []*tracegen.TraceParams
+	err := rt.ExportTo(g.Argument(0), &traceParams)
+	if err != nil {
+		common.Throw(rt, errors.Wrap(err, "the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
+	}
+	generator := tracegen.NewParameterizedGenerator(traceParams)
+
+	return rt.ToValue(generator).ToObject(rt)
+}
+
+func (ct *TracingModule) generateRandomTraceID() string {
+	return random.TraceID().HexString()
+}
+
+type ClientConfig struct {
+	Exporter       exporterType `json:"type"`
+	Endpoint       string       `json:"url"`
+	Insecure       bool         `json:"insecure"`
 	Authentication struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
@@ -79,15 +113,12 @@ type Config struct {
 	Headers map[string]string `json:"headers"`
 }
 
-func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
-	rt := ct.vu.Runtime()
+type Client struct {
+	exporter component.TracesExporter
+	vu       modules.VU
+}
 
-	var cfg Config
-	err := rt.ExportTo(g.Argument(0), &cfg)
-	if err != nil {
-		common.Throw(rt, fmt.Errorf("client constructor expects first argument to be Config"))
-	}
-
+func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	if cfg.Endpoint == "" {
 		cfg.Endpoint = "0.0.0.0:4317"
 	}
@@ -96,8 +127,9 @@ func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
 		factory     component.ExporterFactory
 		exporterCfg config.Exporter
 	)
+
 	switch cfg.Exporter {
-	case noExporter, otlpExporter:
+	case exporterNone, exporterOTLP:
 		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlpexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
@@ -109,7 +141,7 @@ func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
 				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
 			}, cfg.Headers),
 		}
-	case jaegerExporter:
+	case exporterJaeger:
 		factory = jaegerexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*jaegerexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
@@ -122,7 +154,7 @@ func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
 			}, cfg.Headers),
 		}
 	default:
-		log.Fatal(fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter))
+		return nil, errors.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
 	}
 
 	exporter, err := factory.CreateTracesExporter(
@@ -137,50 +169,24 @@ func (ct *ClientTracing) NewClient(g goja.ConstructorCall) *goja.Object {
 		},
 		exporterCfg,
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	_ = exporter.Start(context.Background(), componenttest.NewNopHost())
 
+	err = exporter.Start(vu.Context(), componenttest.NewNopHost())
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to create exporter: %v", err))
+		return nil, errors.Wrap(err, "failed to start exporter")
 	}
 
-	return rt.ToValue(&Client{
+	return &Client{
 		exporter: exporter,
-		cfg:      &cfg,
-		vu:       ct.vu,
-	}).ToObject(rt)
-}
-
-func (ct *ClientTracing) NewParameterizedGenerator(g goja.ConstructorCall) *goja.Object {
-	rt := ct.vu.Runtime()
-
-	var traceParams []*tracegen.TraceParams
-	err := rt.ExportTo(g.Argument(0), &traceParams)
-	if err != nil {
-		common.Throw(rt, fmt.Errorf("the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
-	}
-	generator := tracegen.NewParameterizedGenerator(traceParams)
-
-	return rt.ToValue(generator).ToObject(rt)
-}
-
-func (ct *ClientTracing) generateRandomTraceID() string {
-	return random.TraceID().HexString()
+		vu:       vu,
+	}, nil
 }
 
 func (c *Client) Push(traces ptrace.Traces) error {
-	err := c.exporter.ConsumeTraces(context.Background(), traces)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.exporter.ConsumeTraces(c.vu.Context(), traces)
 }
 
 func (c *Client) Shutdown() error {
-	return c.exporter.Shutdown(context.Background())
+	return c.exporter.Shutdown(c.vu.Context())
 }
 
 func mergeMaps(ms ...map[string]string) map[string]string {
