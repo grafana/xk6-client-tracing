@@ -3,15 +3,15 @@ package xk6_client_tracing
 import (
 	"context"
 	"encoding/base64"
-	"github.com/pkg/errors"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 	"os"
 	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/grafana/xk6-client-tracing/pkg/random"
 	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
+	"github.com/grafana/xk6-client-tracing/pkg/util"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
+	"github.com/pkg/errors"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -132,7 +133,7 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 		if err != nil {
 			common.Throw(rt, errors.Wrap(err, "unable to generate TemplatedGenerator"))
 		}
-		
+
 		ct.templatedGenerators[tmplObj] = generator
 	}
 
@@ -178,7 +179,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: mergeMaps(map[string]string{
+			Headers: util.MergeMaps(map[string]string{
 				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
 			}, cfg.Headers),
 		}
@@ -190,7 +191,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: mergeMaps(map[string]string{
+			Headers: util.MergeMaps(map[string]string{
 				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
 			}, cfg.Headers),
 		}
@@ -210,6 +211,9 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		},
 		exporterCfg,
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed create exporter")
+	}
 
 	err = exporter.Start(vu.Context(), componenttest.NewNopHost())
 	if err != nil {
@@ -228,14 +232,4 @@ func (c *Client) Push(traces ptrace.Traces) error {
 
 func (c *Client) Shutdown() error {
 	return c.exporter.Shutdown(c.vu.Context())
-}
-
-func mergeMaps(ms ...map[string]string) map[string]string {
-	result := make(map[string]string)
-	for _, m := range ms {
-		for k, v := range m {
-			result[k] = v
-		}
-	}
-	return result
 }

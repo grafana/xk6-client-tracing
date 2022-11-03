@@ -2,6 +2,7 @@ package random
 
 import (
 	crand "crypto/rand"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -12,8 +13,8 @@ import (
 
 var (
 	letters             = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	httpStatusesSuccess = []int{200, 201, 202, 204}
-	httpStatusesError   = []int{400, 401, 403, 404, 405, 406, 408, 409, 410, 411, 412, 413, 414, 415, 417, 428, 427, 500, 501, 502}
+	httpStatusesSuccess = []int64{200, 201, 202, 204}
+	httpStatusesError   = []int64{400, 401, 403, 404, 405, 406, 408, 409, 410, 411, 412, 413, 414, 415, 417, 428, 427, 500, 501, 502}
 	httpMethods         = []string{http.MethodGet, http.MethodDelete, http.MethodPost, http.MethodPut, http.MethodPatch}
 	operations          = []string{"get", "list", "query", "search", "set", "add", "create", "update", "send", "remove", "delete"}
 	serviceSuffix       = []string{"", "", "service", "backend", "api", "proxy", "engine"}
@@ -28,14 +29,14 @@ func init() {
 	rand.Seed(seed.Int64())
 }
 
-func selectElem[T comparable](elements []T) T {
+func SelectElement[T any](elements []T) T {
 	return elements[rand.Intn(len(elements))]
 }
 
 func String(n int) string {
 	s := make([]rune, n)
 	for i := range s {
-		s[i] = selectElem(letters)
+		s[i] = SelectElement(letters)
 	}
 	return string(s)
 }
@@ -44,35 +45,48 @@ func K6String(n int) string {
 	return "k6." + String(n)
 }
 
+func IntBetween(min, max int) int {
+	n := rand.Intn(max - min)
+	return min + n
+}
+
 func Duration(min, max time.Duration) time.Duration {
 	n := rand.Int63n(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
-func HTTPStatusSuccess() int {
-	return selectElem(httpStatusesSuccess)
+func IPAddr() string {
+	return fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255))
 }
 
-func HTTPStatusErr() int {
-	return selectElem(httpStatusesError)
+func Port() int {
+	return IntBetween(8000, 9000)
+}
+
+func HTTPStatusSuccess() int64 {
+	return SelectElement(httpStatusesSuccess)
+}
+
+func HTTPStatusErr() int64 {
+	return SelectElement(httpStatusesError)
 }
 
 func HTTPMethod() string {
-	return selectElem(httpMethods)
+	return SelectElement(httpMethods)
 }
 
 func DBService() string {
-	return selectElem(dbNames)
+	return SelectElement(dbNames)
 }
 
 func Service() string {
-	resource := selectElem(resources)
+	resource := SelectElement(resources)
 	return ServiceForResource(resource)
 }
 
 func ServiceForResource(resource string) string {
 	name := resource
-	suffix := selectElem(serviceSuffix)
+	suffix := SelectElement(serviceSuffix)
 	if suffix != "" {
 		name = name + "-" + suffix
 	}
@@ -80,12 +94,12 @@ func ServiceForResource(resource string) string {
 }
 
 func Operation() string {
-	resource := selectElem(resources)
+	resource := SelectElement(resources)
 	return OperationForResource(resource)
 }
 
 func OperationForResource(resource string) string {
-	op := selectElem(operations)
+	op := SelectElement(operations)
 	return op + "-" + resource
 }
 

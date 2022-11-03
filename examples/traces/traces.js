@@ -13,9 +13,9 @@ const client = new tracing.Client({
 });
 
 const traceDefaults = {
-    attributeSemantics: tracing.SemanticsHTTP,
+    attributeSemantics: tracing.SEMANTICS_HTTP,
     attributes: {"one": "three"},
-    randomAttributes: {count: 2, cardinality: 50}
+    randomAttributes: {count: 2, cardinality: 5}
 }
 
 const traceTemplates = [
@@ -27,11 +27,12 @@ const traceTemplates = [
             {service: "auth-service", name: "authenticate"},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
             {service: "article-service", name: "get-articles"},
-            {service: "article-service", name: "select-articles", attributeSemantics: tracing.SemanticsDB},
-            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SemanticsDB, randomAttributes: {count: 10, cardinality: 200}},
+            {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
+            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
         ]
     },
     {
+        defaults: traceDefaults,
         spans: [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
             {service: "shop-backend", name: "authenticate"},

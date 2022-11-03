@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/dop251/goja v0.0.0-20221025165401-cb5011b539fe
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter v0.62.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	go.k6.io/k6 v0.40.0
 	go.opentelemetry.io/collector v0.62.1
@@ -13,7 +13,6 @@ require (
 	go.opentelemetry.io/otel/metric v0.32.1
 	go.opentelemetry.io/otel/trace v1.11.1
 	go.uber.org/zap v1.23.0
-	gopkg.in/guregu/null.v4 v4.0.0
 )
 
 require (
@@ -49,6 +48,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
