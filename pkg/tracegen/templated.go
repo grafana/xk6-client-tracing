@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
+// OTelSemantics describes a specific set of OpenTelemetry semantic conventions.
 type OTelSemantics int
 
 const (
@@ -28,37 +29,61 @@ const (
 	randomAttributeValueSize          = 30
 )
 
+// Range represents and interval with the given upper and lower bound [Max, Min)
 type Range struct {
 	Min int64
 	Max int64
 }
 
+// AttributeParams describe how random attributes should be created.
 type AttributeParams struct {
-	Count       int
+	// Count the number of attributes to creat.
+	Count int
+	// Cardinality how many distinct values are created for each attribute.
 	Cardinality *int
 }
 
+// SpanDefaults contains template parameters that are applied to all generated spans.
 type SpanDefaults struct {
-	AttributeSemantics OTelSemantics          `js:"attributeSemantics"`
-	Attributes         map[string]interface{} `js:"attributes"`
-	RandomAttributes   *AttributeParams       `js:"randomAttributes"`
+	// AttributeSemantics whether to create attributes that follow specific OpenTelemetry semantics.
+	AttributeSemantics OTelSemantics `js:"attributeSemantics"`
+	// Attributes that are added to each span.
+	Attributes map[string]interface{} `js:"attributes"`
+	// RandomAttributes random attributes generated for each span.
+	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
+// SpanTemplate parameters that define how a span is created.
 type SpanTemplate struct {
-	Service            string                 `js:"service"`
-	Name               *string                `js:"name"`
-	ParentIDX          *int                   `js:"parentIdx"`
-	Duration           *Range                 `js:"duration"`
-	AttributeSemantics OTelSemantics          `js:"attributeSemantics"`
-	Attributes         map[string]interface{} `js:"attributes"`
-	RandomAttributes   *AttributeParams       `js:"randomAttributes"`
+	// Service is used to set the service.name attribute of the corresponding resource span.
+	Service string `js:"service"`
+	// Name represents the name of the span. If empty, the name will be randomly generated.
+	Name *string `js:"name"`
+	// ParentIDX defines the index of the parent span in TraceTemplate.Spans. ParentIDX must be smaller than the
+	// own index. If empty, the parent is the span with the position directly before this span in TraceTemplate.Spans.
+	ParentIDX *int `js:"parentIdx"`
+	// Duration defines the interval for the generated span duration. If missing, a random duration is generated that
+	// is shorter than the duration of the parent span.
+	Duration *Range `js:"duration"`
+	// AttributeSemantics can be set in order to generate attributes that follow a certain OpenTelemetry semantic
+	// convention. So far only semantic convention for HTTP requests is supported.
+	AttributeSemantics OTelSemantics `js:"attributeSemantics"`
+	// Attributes that are added to this span.
+	Attributes map[string]interface{} `js:"attributes"`
+	// RandomAttributes parameters to configure the creation of random attributes. If missing, no random attributes
+	// are added to the span.
+	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
+// TraceTemplate describes how all a trace and it's spans are generated.
 type TraceTemplate struct {
-	Defaults SpanDefaults   `js:"defaults"`
-	Spans    []SpanTemplate `js:"spans"`
+	// Defaults parameters that are applied to each generated span.
+	Defaults SpanDefaults `js:"defaults"`
+	// Spans parameters for the individual spans of a trace.
+	Spans []SpanTemplate `js:"spans"`
 }
 
+// NewTemplatedGenerator creates a new trace generator.
 func NewTemplatedGenerator(template *TraceTemplate) (*TemplatedGenerator, error) {
 	gen := &TemplatedGenerator{}
 	err := gen.initialize(template)
@@ -68,6 +93,9 @@ func NewTemplatedGenerator(template *TraceTemplate) (*TemplatedGenerator, error)
 	return gen, nil
 }
 
+// TemplatedGenerator a trace generator that creates randomized traces based on a given TraceTemplate.
+// The generator interprets the template parameters such that realistically looking traces with consistent
+// spans and attributes are generated.
 type TemplatedGenerator struct {
 	randomAttributes map[string][]interface{}
 	resources        map[string]*internalResourceTemplate
@@ -94,6 +122,7 @@ type internalResourceTemplate struct {
 	hostPort  int
 }
 
+// Traces implements Generator for TemplatedGenerator
 func (g *TemplatedGenerator) Traces() ptrace.Traces {
 	var (
 		traceID      = random.TraceID()
