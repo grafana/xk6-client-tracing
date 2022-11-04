@@ -14,62 +14,21 @@ const (
 	testRounds = 10
 )
 
-func TestDBService(t *testing.T) {
+func TestSelectElement(t *testing.T) {
 	var prev string
 	var eqCount int
 
 	for i := 0; i < testRounds; i++ {
-		srv := DBService()
-		if srv == prev {
+		res := SelectElement(resources)
+		if res == prev {
 			eqCount++
 		}
 
-		assert.Contains(t, dbNames, srv)
-		prev = srv
+		assert.Contains(t, resources, res)
+		prev = res
 	}
 
-	assert.Less(t, eqCount, 3, "too many equal random db names")
-}
-
-func TestOperation(t *testing.T) {
-	var prev string
-	var eqCount int
-
-	for i := 0; i < testRounds; i++ {
-		op := Operation()
-		if op == prev {
-			eqCount++
-		}
-
-		parts := strings.Split(op, "-")
-		require.Equal(t, 2, len(parts))
-		assert.Contains(t, operations, parts[0])
-		assert.Contains(t, resources, parts[1])
-		prev = op
-	}
-
-	assert.Less(t, eqCount, 3, "too many equal random operation names")
-}
-
-func TestService(t *testing.T) {
-	var prev string
-	var eqCount int
-
-	for i := 0; i < testRounds; i++ {
-		srv := Service()
-		if srv == prev {
-			eqCount++
-		}
-
-		parts := strings.Split(srv, "-")
-		assert.Contains(t, resources, parts[0])
-		if len(parts) > 1 {
-			assert.Contains(t, serviceSuffix, parts[1])
-		}
-		prev = srv
-	}
-
-	assert.Less(t, eqCount, 3, "too many equal random service names")
+	assert.Less(t, eqCount, 4, "too many equal selections")
 }
 
 func TestString(t *testing.T) {
@@ -98,6 +57,52 @@ func TestK6String(t *testing.T) {
 				prev = s
 			}
 		})
+	}
+}
+
+func TestIntBetween(t *testing.T) {
+	const (
+		min = 15
+		max = 25
+	)
+
+	var prev, eqCount int
+	for i := 0; i < testRounds; i++ {
+		n := IntBetween(min, max)
+		if n == prev {
+			eqCount++
+		}
+
+		assert.GreaterOrEqual(t, n, min)
+		assert.Less(t, n, max)
+		prev = n
+	}
+
+	assert.Less(t, eqCount, 4, "too many equal random numbers")
+}
+
+func TestDBService(t *testing.T) {
+	db := DBService()
+
+	assert.Contains(t, dbNames, db)
+}
+
+func TestOperation(t *testing.T) {
+	op := Operation()
+
+	parts := strings.Split(op, "-")
+	require.Equal(t, 2, len(parts))
+	assert.Contains(t, operations, parts[0])
+	assert.Contains(t, resources, parts[1])
+}
+
+func TestService(t *testing.T) {
+	srv := Service()
+
+	parts := strings.Split(srv, "-")
+	assert.Contains(t, resources, parts[0])
+	if len(parts) > 1 {
+		assert.Contains(t, serviceSuffix, parts[1])
 	}
 }
 
