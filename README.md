@@ -29,13 +29,13 @@ After the command completed successfully the image `grafana/xk6-client-tracing:l
 
 > Note: before running the docker-compose example, make sure to complete the docker image build step above!
 
-To run the example `cd` into the directory `examples/basic` and run:
+To run the example `cd` into the directory `examples/param` and run:
 
 ```shell
 docker-compose up -d
 ```
 
-In the example `k6-tracing` uses the script `basic.js` to generate spans and sends them to the `otel-collector`.
+In the example `k6-tracing` uses the script `param.js` to generate spans and sends them to the `otel-collector`.
 The generated spans can be observed by inspecting the collector's logs:
 
 ```shell
@@ -43,7 +43,7 @@ docker-compose logs -f otel-collector
 ```
 
 The example uses the OTLP gRPC exporter. 
-If you want to use Jaeger gRPC, you can change `basic.js` and use the following settings:
+If you want to use Jaeger gRPC, you can change `param.js` and use the following settings:
 
 ```javascript
 const client = new tracing.Client({
@@ -75,7 +75,7 @@ make build
 ```
 
 The build step produces the `k6-tracing` binary.
-To test the binary you first need to change the endpoint in the client configuration in `examples/basic/basic.js`:
+To test the binary you first need to change the endpoint in the client configuration in `examples/basic/param.js`:
 
 ```javascript
 const client = new tracing.Client({
@@ -96,7 +96,7 @@ docker run --rm -p 13133:13133 -p 14250:14250 -p 14268:14268 \
 
 Once that's done, you can run a test like:
 ```
-./k6-tracing run examples/basic/basic.js
+./k6-tracing run examples/basic/param.js
 ```
 
 And see the generated spans in the OTEL collector logs!
