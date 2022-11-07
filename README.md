@@ -80,7 +80,7 @@ The template has the following schema:
         attributes: { string : any },
         // attributeSemantics can be set in order to generate attributes that follow a certain OpenTelemetry 
         // semantic convention. For example tracing.SEMANTICS_HTTP (optional)
-        attributeSemantics: int,
+        attributeSemantics: string,
         // Parameters to configure the creation of random attributes. If missing, no random attributes
         // are added to the spans (optional)
         randomAttributes: { 
@@ -108,7 +108,7 @@ The template has the following schema:
             attributes: { string : any },
             // attributeSemantics can be set in order to generate attributes that follow a certain OpenTelemetry 
             // semantic convention. For example tracing.SEMANTICS_HTTP (optional)
-            attributeSemantics: int,
+            attributeSemantics: string,
             // Parameters to configure the creation of random attributes. If missing, no random attributes
             // are added to the span (optional)
             randomAttributes: {

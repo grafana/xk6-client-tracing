@@ -15,12 +15,11 @@ import (
 )
 
 // OTelSemantics describes a specific set of OpenTelemetry semantic conventions.
-type OTelSemantics int
+type OTelSemantics string
 
 const (
-	SemanticsNone OTelSemantics = iota
-	SemanticsHTTP
-	SemanticsDB
+	SemanticsHTTP OTelSemantics = "http"
+	SemanticsDB   OTelSemantics = "db"
 
 	defaultMinDuration                = time.Millisecond * 500
 	defaultMaxDuration                = time.Millisecond * 800
@@ -46,7 +45,7 @@ type AttributeParams struct {
 // SpanDefaults contains template parameters that are applied to all generated spans.
 type SpanDefaults struct {
 	// AttributeSemantics whether to create attributes that follow specific OpenTelemetry semantics.
-	AttributeSemantics OTelSemantics `js:"attributeSemantics"`
+	AttributeSemantics *OTelSemantics `js:"attributeSemantics"`
 	// Attributes that are added to each span.
 	Attributes map[string]interface{} `js:"attributes"`
 	// RandomAttributes random attributes generated for each span.
@@ -67,7 +66,7 @@ type SpanTemplate struct {
 	Duration *Range `js:"duration"`
 	// AttributeSemantics can be set in order to generate attributes that follow a certain OpenTelemetry semantic
 	// convention. So far only semantic convention for HTTP requests is supported.
-	AttributeSemantics OTelSemantics `js:"attributeSemantics"`
+	AttributeSemantics *OTelSemantics `js:"attributeSemantics"`
 	// Attributes that are added to this span.
 	Attributes map[string]interface{} `js:"attributes"`
 	// RandomAttributes parameters to configure the creation of random attributes. If missing, no random attributes
@@ -109,7 +108,7 @@ type internalSpanTemplate struct {
 	name               string
 	kind               ptrace.SpanKind
 	duration           *Range
-	attributeSemantics OTelSemantics
+	attributeSemantics *OTelSemantics
 	attributes         map[string]interface{}
 	randomAttributes   map[string][]interface{}
 }
@@ -220,9 +219,11 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 	}
 
 	g.generateNetworkAttributes(tmpl, &span, parent)
-	switch tmpl.attributeSemantics {
-	case SemanticsHTTP:
-		g.generateHTTPAttributes(tmpl, &span, parent)
+	if tmpl.attributeSemantics != nil {
+		switch *tmpl.attributeSemantics {
+		case SemanticsHTTP:
+			g.generateHTTPAttributes(tmpl, &span, parent)
+		}
 	}
 
 	return span
@@ -392,7 +393,7 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	}
 
 	// apply defaults
-	if tmpl.AttributeSemantics == SemanticsNone {
+	if tmpl.AttributeSemantics == nil {
 		span.attributeSemantics = defaults.AttributeSemantics
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
