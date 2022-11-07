@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
-	"github.com/grafana/xk6-client-tracing/pkg/random"
 	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
 	"github.com/grafana/xk6-client-tracing/pkg/util"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
@@ -75,8 +74,6 @@ func (ct *TracingModule) Exports() modules.Exports {
 			"Client":                 ct.newClient,
 			"ParameterizedGenerator": ct.newParameterizedGenerator,
 			"TemplatedGenerator":     ct.newTemplatedGenerator,
-			// functions
-			"generateRandomTraceID": ct.generateRandomTraceID,
 		},
 	}
 }
@@ -104,7 +101,7 @@ func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *g
 
 	generator, found := ct.paramGenerators[paramObj]
 	if !found {
-		var param []tracegen.TraceParams
+		var param []*tracegen.TraceParams
 		err := rt.ExportTo(paramVal, &param)
 		if err != nil {
 			common.Throw(rt, errors.Wrap(err, "the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
@@ -138,10 +135,6 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 	}
 
 	return rt.ToValue(generator).ToObject(rt)
-}
-
-func (ct *TracingModule) generateRandomTraceID() string {
-	return random.TraceID().HexString()
 }
 
 type ClientConfig struct {

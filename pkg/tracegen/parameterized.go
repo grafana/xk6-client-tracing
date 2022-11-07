@@ -12,6 +12,11 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
+const (
+	defaultSpanCount = 10
+	defaultSpanSize  = 1000
+)
+
 type TraceParams struct {
 	ID                string     `json:"id"`
 	RandomServiceName bool       `json:"random_service_name"`
@@ -25,14 +30,27 @@ type SpanParams struct {
 	FixedAttrs map[string]interface{} `json:"fixed_attrs"`
 }
 
-func NewParameterizedGenerator(traceParams []TraceParams) *ParameterizedGenerator {
+func (tp *TraceParams) setDefaults() {
+	if tp.Spans.Count == 0 {
+		tp.Spans.Count = defaultSpanCount
+	}
+	if tp.Spans.Size <= 0 {
+		tp.Spans.Size = defaultSpanSize
+	}
+}
+
+func NewParameterizedGenerator(traceParams []*TraceParams) *ParameterizedGenerator {
+	for _, tp := range traceParams {
+		tp.setDefaults()
+	}
+
 	return &ParameterizedGenerator{
 		traceParams: traceParams,
 	}
 }
 
 type ParameterizedGenerator struct {
-	traceParams []TraceParams
+	traceParams []*TraceParams
 }
 
 func (g *ParameterizedGenerator) Traces() ptrace.Traces {
@@ -55,11 +73,15 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		ils := ilss.AppendEmpty()
 		ils.Scope().SetName("k6")
 
+		if te.ID == "" {
+			te.ID = random.TraceID().HexString()
+		}
+
 		// Spans
 		sps := ils.Spans()
 		sps.EnsureCapacity(te.Spans.Count)
 		for e := 0; e < te.Spans.Count; e++ {
-			g.generateSpan(&te, sps.AppendEmpty())
+			g.generateSpan(te, sps.AppendEmpty())
 		}
 	}
 
@@ -70,9 +92,9 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 	endTime := time.Now().Round(time.Second)
 	startTime := endTime.Add(-time.Duration(rand.Intn(500)+10) * time.Millisecond)
 
-	var b [16]byte
-	traceID, _ := hex.DecodeString(t.ID)
-	copy(b[:], traceID)
+	var traceID pcommon.TraceID
+	b, _ := hex.DecodeString(t.ID)
+	copy(traceID[:], b)
 
 	spanName := random.Operation()
 	if t.Spans.RandomName {
@@ -80,7 +102,7 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 	}
 
 	span := ptrace.NewSpan()
-	span.SetTraceID(b)
+	span.SetTraceID(traceID)
 	span.SetSpanID(random.SpanID())
 	span.SetParentSpanID(random.SpanID())
 	span.SetName(spanName)
