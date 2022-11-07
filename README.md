@@ -31,7 +31,11 @@ The configuration is an object with the following schema:
     // The exporter protocol used for sending the traces: tracing.EXPORTER_OTLP or tracing.EXPORTER_JAEGER
     exporter: string,
     // Whether insecure connections are allowed (optional, default: false)
-    insecure: bool 
+    insecure: bool,
+    // Credentials used for authentication
+    authentication: { user: string, password: string },
+    // Additional headers sent by the client
+    headers: { string : string }
 }
 ```
 
