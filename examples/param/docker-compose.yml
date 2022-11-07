@@ -5,9 +5,9 @@ services:
     image: grafana/xk6-client-tracing:latest
     command:
       - run
-      - /basic.js
+      - /param.js
     volumes:
-      - ./basic.js:/basic.js:ro
+      - ./param.js:/param.js:ro
     depends_on:
       - otel-collector
 

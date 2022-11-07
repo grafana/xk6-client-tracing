@@ -1,24 +1,15 @@
 import { sleep } from 'k6';
 import tracing from 'k6/x/tracing';
 import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
-import { SharedArray } from 'k6/data';
 
 export let options = {
     vus: 1,
     duration: "5m",
 };
 
-const traceIDs = new SharedArray('traceIDs', function () {
-    let toret = [];
-    for (let i = 0; i < 10; i++) {
-        toret.push(tracing.generateRandomTraceID());
-    }
-    return toret;
-});
-
 const client = new tracing.Client({
     endpoint: "otel-collector:4317",
-    exporter: "otlp",
+    exporter: tracing.EXPORTER_OTLP,
     insecure: true,
 });
 
@@ -31,7 +22,6 @@ export default function () {
         pushSizeSpans += c;
 
         t.push({
-            id: traceIDs[Math.floor(Math.random() * traceIDs.length)],
             random_service_name: false,
             spans: {
                 count: c,
@@ -43,7 +33,11 @@ export default function () {
             }
         });
     }
-    client.push(t);
+
+    let gen = new tracing.ParameterizedGenerator(t)
+    let traces = gen.traces()
+    client.push(traces);
+
     console.log(`Pushed ${pushSizeSpans} spans from ${pushSizeTraces} different traces. Here is a random traceID: ${t[Math.floor(Math.random() * t.length)].id}`);
     sleep(15);
 }

@@ -1,0 +1,26 @@
+version: "3"
+
+services:
+  k6-tracing:
+    image: grafana/xk6-client-tracing:latest
+    command:
+      - run
+      - /template.js
+    volumes:
+      - ./template.js:/template.js:ro
+    depends_on:
+      - otel-collector
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command:
+      - --config=/collector-config.yaml
+    volumes:
+      - ../shared/collector-config.yaml:/collector-config.yaml:ro
+    ports:
+      - "13133:13133"
+      - "14250:14250"
+      - "14268:14268"
+      - "55678-55679:55678-55679"
+      - "4317:4317"
+      - "9411:9411"
