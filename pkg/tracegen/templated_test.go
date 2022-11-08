@@ -12,7 +12,7 @@ import (
 const testRounds = 5
 
 func TestTemplatedGenerator_Traces(t *testing.T) {
-	attributeSemantics := []OTelSemantics{SemanticsNone, SemanticsHTTP}
+	attributeSemantics := []OTelSemantics{SemanticsHTTP}
 	template := TraceTemplate{
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
@@ -27,7 +27,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 	}
 
 	for _, semantics := range attributeSemantics {
-		template.Defaults.AttributeSemantics = semantics
+		template.Defaults.AttributeSemantics = &semantics
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
@@ -43,7 +43,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 				}
 				if span.Kind() != ptrace.SpanKindInternal {
 					assert.GreaterOrEqual(t, attributesWithPrefix(span, "net."), 3)
-					if template.Defaults.AttributeSemantics == SemanticsHTTP {
+					if *template.Defaults.AttributeSemantics == SemanticsHTTP {
 						assert.GreaterOrEqual(t, attributesWithPrefix(span, "http."), 5)
 					}
 				}
