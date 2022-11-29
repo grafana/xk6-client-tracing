@@ -3,11 +3,12 @@ import tracing from 'k6/x/tracing';
 
 export const options = {
     vus: 1,
-    duration: "5m",
+    duration: "20m",
 };
 
+const endpoint = __ENV.ENDPOINT || "otel-collector:4317"
 const client = new tracing.Client({
-    endpoint: "otel-collector:4317",
+    endpoint,
     exporter: tracing.EXPORTER_OTLP,
     insecure: true,
 });

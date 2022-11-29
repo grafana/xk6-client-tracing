@@ -4,11 +4,12 @@ import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 export let options = {
     vus: 1,
-    duration: "5m",
+    duration: "20m",
 };
 
+const endpoint = __ENV.ENDPOINT || "otel-collector:4317"
 const client = new tracing.Client({
-    endpoint: "otel-collector:4317",
+    endpoint,
     exporter: tracing.EXPORTER_OTLP,
     insecure: true,
 });
