@@ -1,5 +1,6 @@
 import {sleep} from 'k6';
 import tracing from 'k6/x/tracing';
+import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 export const options = {
     vus: 1,
@@ -60,13 +61,11 @@ const traceTemplates = [
 ]
 
 export default function () {
-    traceTemplates.forEach(function (tmpl) {
-        let gen = new tracing.TemplatedGenerator(tmpl)
-        let traces = gen.traces()
-        client.push(traces)
-    });
+    const templateIndex = randomIntBetween(0, traceTemplates.length-1)
+    const gen = new tracing.TemplatedGenerator(traceTemplates[templateIndex])
+    client.push(gen.traces())
 
-    sleep(5);
+    sleep(randomIntBetween(1, 5));
 }
 
 export function teardown() {
