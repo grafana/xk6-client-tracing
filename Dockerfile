@@ -20,4 +20,7 @@ RUN make build
 FROM alpine:latest
 
 COPY --from=xk6-client-tracing-build /opt/xk6-client-tracing/k6-tracing /k6-tracing
+COPY ./examples/template/template.js /example-script.js
+
 ENTRYPOINT [ "/k6-tracing" ]
+CMD ["run", "/example-script.js"]
