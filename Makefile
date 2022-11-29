@@ -1,5 +1,5 @@
 BINARY     ?= k6-tracing
-IMAGE      ?= grafana/xk6-client-tracing
+IMAGE      ?= ghcr.io/grafana/xk6-client-tracing
 IMAGE_TAG  ?= latest
 
 GO_MODULE      := $(shell head -n1 go.mod | cut -d' ' -f2)
