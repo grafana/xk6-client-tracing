@@ -26,9 +26,26 @@ const traceTemplates = [
             {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}},
             {service: "auth-service", name: "authenticate"},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
-            {service: "article-service", name: "get-articles"},
+            {service: "article-service", name: "list-articles"},
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
             {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
+        ]
+    },
+    {
+        defaults: {
+            attributeSemantics: tracing.SEMANTICS_HTTP,
+        },
+        spans: [
+            {service: "shop-backend", name: "article-to-cart", duration: {min: 400, max: 1200}},
+            {service: "shop-backend", name: "authenticate", duration: {min: 70, max: 200}},
+            {service: "auth-service", name: "authenticate"},
+            {service: "shop-backend", name: "get-article", parentIdx: 0},
+            {service: "article-service", name: "get-article"},
+            {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
+            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 2}},
+            {service: "shop-backend", name: "place-articles", parentIdx: 0},
+            {service: "cart-service", name: "place-articles", attributes: {"article.count": 1, "http.status_code": 201}},
+            {service: "cart-service", name: "persist-cart"}
         ]
     },
     {
