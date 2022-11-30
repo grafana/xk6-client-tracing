@@ -1,13 +1,15 @@
 import {sleep} from 'k6';
 import tracing from 'k6/x/tracing';
+import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 export const options = {
     vus: 1,
-    duration: "5m",
+    duration: "20m",
 };
 
+const endpoint = __ENV.ENDPOINT || "otel-collector:4317"
 const client = new tracing.Client({
-    endpoint: "otel-collector:4317",
+    endpoint,
     exporter: tracing.EXPORTER_OTLP,
     insecure: true,
 });
@@ -26,9 +28,26 @@ const traceTemplates = [
             {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}},
             {service: "auth-service", name: "authenticate"},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
-            {service: "article-service", name: "get-articles"},
+            {service: "article-service", name: "list-articles"},
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
             {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
+        ]
+    },
+    {
+        defaults: {
+            attributeSemantics: tracing.SEMANTICS_HTTP,
+        },
+        spans: [
+            {service: "shop-backend", name: "article-to-cart", duration: {min: 400, max: 1200}},
+            {service: "shop-backend", name: "authenticate", duration: {min: 70, max: 200}},
+            {service: "auth-service", name: "authenticate"},
+            {service: "shop-backend", name: "get-article", parentIdx: 0},
+            {service: "article-service", name: "get-article"},
+            {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
+            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 2}},
+            {service: "shop-backend", name: "place-articles", parentIdx: 0},
+            {service: "cart-service", name: "place-articles", attributes: {"article.count": 1, "http.status_code": 201}},
+            {service: "cart-service", name: "persist-cart"}
         ]
     },
     {
@@ -42,13 +61,11 @@ const traceTemplates = [
 ]
 
 export default function () {
-    traceTemplates.forEach(function (tmpl) {
-        let gen = new tracing.TemplatedGenerator(tmpl)
-        let traces = gen.traces()
-        client.push(traces)
-    });
+    const templateIndex = randomIntBetween(0, traceTemplates.length-1)
+    const gen = new tracing.TemplatedGenerator(traceTemplates[templateIndex])
+    client.push(gen.traces())
 
-    sleep(5);
+    sleep(randomIntBetween(1, 5));
 }
 
 export function teardown() {

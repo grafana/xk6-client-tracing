@@ -10,6 +10,7 @@ services:
       - ./param.js:/param.js:ro
     depends_on:
       - otel-collector
+    restart: always
 
   otel-collector:
     image: otel/opentelemetry-collector:latest
