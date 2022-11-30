@@ -245,9 +245,9 @@ func (g *TemplatedGenerator) generateNetworkAttributes(tmpl *internalSpanTemplat
 
 		if parent != nil && parent.Kind() == ptrace.SpanKindClient {
 			ip, _ := span.Attributes().Get("net.sock.host.addr")
-			putIfNotExists(parent.Attributes(), "net.sock.peer.addr", ip)
+			putIfNotExists(parent.Attributes(), "net.sock.peer.addr", ip.Str())
 			name, _ := span.Attributes().Get("net.host.name")
-			putIfNotExists(parent.Attributes(), "net.peer.name", name)
+			putIfNotExists(parent.Attributes(), "net.peer.name", name.Str())
 		}
 	}
 }
