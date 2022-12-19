@@ -2,7 +2,7 @@ version: "3"
 
 services:
   k6-tracing:
-    image: grafana/xk6-client-tracing:latest
+    image: ghcr.io/grafana/xk6-client-tracing:latest
     command:
       - run
       - /template.js
