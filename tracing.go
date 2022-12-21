@@ -17,8 +17,10 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/config/configgrpc"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
+	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -29,9 +31,10 @@ import (
 type exporterType string
 
 const (
-	exporterNone   exporterType = ""
-	exporterOTLP   exporterType = "otlp"
-	exporterJaeger exporterType = "jaeger"
+	exporterNone     exporterType = ""
+	exporterOTLP     exporterType = "otlp"
+	exporterOTLPHTTP exporterType = "otlphttp"
+	exporterJaeger   exporterType = "jaeger"
 )
 
 var (
@@ -66,10 +69,11 @@ func (ct *TracingModule) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
 			// constants
-			"SEMANTICS_HTTP":  tracegen.SemanticsHTTP,
-			"SEMANTICS_DB":    tracegen.SemanticsDB,
-			"EXPORTER_OTLP":   exporterOTLP,
-			"EXPORTER_JAEGER": exporterJaeger,
+			"SEMANTICS_HTTP":     tracegen.SemanticsHTTP,
+			"SEMANTICS_DB":       tracegen.SemanticsDB,
+			"EXPORTER_OTLP":      exporterOTLP,
+			"EXPORTER_OTLP_HTTP": exporterOTLPHTTP,
+			"EXPORTER_JAEGER":    exporterJaeger,
 			// constructors
 			"Client":                 ct.newClient,
 			"ParameterizedGenerator": ct.newParameterizedGenerator,
@@ -180,6 +184,18 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = jaegerexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*jaegerexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
+			Endpoint: cfg.Endpoint,
+			TLSSetting: configtls.TLSClientSetting{
+				Insecure: cfg.Insecure,
+			},
+			Headers: util.MergeMaps(map[string]string{
+				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
+			}, cfg.Headers),
+		}
+	case exporterOTLPHTTP:
+		factory = otlphttpexporter.NewFactory()
+		exporterCfg = factory.CreateDefaultConfig()
+		exporterCfg.(*otlphttpexporter.Config).HTTPClientSettings = confighttp.HTTPClientSettings{
 			Endpoint: cfg.Endpoint,
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
