@@ -12,6 +12,9 @@ const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
     insecure: true,
+    headers: {
+        "X-Scope-Orgid": "test"
+    }
 });
 
 const traceDefaults = {
