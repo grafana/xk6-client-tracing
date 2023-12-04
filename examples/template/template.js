@@ -8,12 +8,13 @@ export const options = {
 };
 
 const endpoint = __ENV.ENDPOINT || "otel-collector:4317"
+const orgid = __ENV.TEMPO_X_SCOPE_ORGID || "test"
 const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
     insecure: true,
     headers: {
-        "X-Scope-Orgid": "test"
+        "X-Scope-Orgid": orgid
     }
 });
 
