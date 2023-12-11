@@ -74,7 +74,7 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		ils.Scope().SetName("k6")
 
 		if te.ID == "" {
-			te.ID = random.TraceID().HexString()
+			te.ID = random.TraceID().String()
 		}
 
 		// Spans

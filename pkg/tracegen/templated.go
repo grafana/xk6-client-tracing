@@ -155,7 +155,7 @@ func (g *TemplatedGenerator) Traces() ptrace.Traces {
 		// attributes
 		for k, v := range randomTraceAttributes {
 			if _, found := s.Attributes().Get(k); !found {
-				s.Attributes().PutEmpty(k).FromRaw(v)
+				_ = s.Attributes().PutEmpty(k).FromRaw(v)
 			}
 		}
 
@@ -211,11 +211,11 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 
 	// add attributes
 	for k, v := range tmpl.attributes {
-		span.Attributes().PutEmpty(k).FromRaw(v)
+		_ = span.Attributes().PutEmpty(k).FromRaw(v)
 	}
 
 	for k, v := range tmpl.randomAttributes {
-		span.Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
+		_ = span.Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
 	}
 
 	g.generateNetworkAttributes(tmpl, &span, parent)
@@ -279,7 +279,7 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 			contentType = ct.Slice().AsRaw()
 		} else {
 			contentType = random.HTTPContentType()
-			span.Attributes().PutEmptySlice("http.response.header.content-type").FromRaw(contentType)
+			_ = span.Attributes().PutEmptySlice("http.response.header.content-type").FromRaw(contentType)
 		}
 
 		var status int64
@@ -475,7 +475,7 @@ func spanKindFromString(s string) ptrace.SpanKind {
 
 func putIfNotExists(m pcommon.Map, k string, v interface{}) {
 	if _, found := m.Get(k); !found {
-		m.PutEmpty(k).FromRaw(v)
+		_ = m.PutEmpty(k).FromRaw(v)
 	}
 }
 

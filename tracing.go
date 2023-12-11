@@ -15,15 +15,16 @@ import (
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -149,11 +150,11 @@ type ClientConfig struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
 	}
-	Headers map[string]string `json:"headers"`
+	Headers map[string]configopaque.String `json:"headers"`
 }
 
 type Client struct {
-	exporter component.TracesExporter
+	exporter exporter.Traces
 	vu       modules.VU
 }
 
@@ -163,8 +164,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	}
 
 	var (
-		factory     component.ExporterFactory
-		exporterCfg config.Exporter
+		factory     exporter.Factory
+		exporterCfg component.Config
 	)
 
 	switch cfg.Exporter {
@@ -176,8 +177,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: util.MergeMaps(map[string]string{
-				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
+			Headers: util.MergeMaps(map[string]configopaque.String{
+				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
 		}
 	case exporterJaeger:
@@ -188,8 +189,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: util.MergeMaps(map[string]string{
-				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
+			Headers: util.MergeMaps(map[string]configopaque.String{
+				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
 		}
 	case exporterOTLPHTTP:
@@ -200,8 +201,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			TLSSetting: configtls.TLSClientSetting{
 				Insecure: cfg.Insecure,
 			},
-			Headers: util.MergeMaps(map[string]string{
-				"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(cfg.Authentication.User+":"+cfg.Authentication.Password)),
+			Headers: util.MergeMaps(map[string]configopaque.String{
+				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
 		}
 	default:
@@ -210,11 +211,11 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 
 	exporter, err := factory.CreateTracesExporter(
 		context.Background(),
-		component.ExporterCreateSettings{
+		exporter.CreateSettings{
 			TelemetrySettings: component.TelemetrySettings{
 				Logger:         zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{}), zapcore.AddSync(os.Stdout), zap.DebugLevel)),
-				TracerProvider: trace.NewNoopTracerProvider(),
-				MeterProvider:  metric.NewNoopMeterProvider(),
+				TracerProvider: tracenoop.NewTracerProvider(),
+				MeterProvider:  metricnoop.NewMeterProvider(),
 			},
 			BuildInfo: component.NewDefaultBuildInfo(),
 		},
@@ -241,4 +242,8 @@ func (c *Client) Push(traces ptrace.Traces) error {
 
 func (c *Client) Shutdown() error {
 	return c.exporter.Shutdown(c.vu.Context())
+}
+
+func authorizationHeader(user, password string) configopaque.String {
+	return configopaque.String("Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)))
 }
