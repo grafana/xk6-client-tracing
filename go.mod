@@ -1,6 +1,6 @@
 module github.com/grafana/xk6-client-tracing
 
-go 1.18
+go 1.21
 
 require (
 	github.com/dop251/goja v0.0.0-20221025165401-cb5011b539fe
