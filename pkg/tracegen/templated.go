@@ -274,6 +274,14 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 			span.Attributes().PutStr("http.method", method)
 		}
 
+		var contentType []any
+		if ct, found := span.Attributes().Get("http.response.header.content-type"); found {
+			contentType = ct.Slice().AsRaw()
+		} else {
+			contentType = random.HTTPContentType()
+			span.Attributes().PutEmptySlice("http.response.header.content-type").FromRaw(contentType)
+		}
+
 		var status int64
 		if st, found := span.Attributes().Get("http.status_code"); found {
 			status = st.Int()
@@ -311,6 +319,7 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 				parent.Status().SetMessage(http.StatusText(int(status)))
 			}
 			putIfNotExists(parent.Attributes(), "http.method", method)
+			putIfNotExists(parent.Attributes(), "http.request.header.accept", contentType)
 			putIfNotExists(parent.Attributes(), "http.status_code", status)
 			putIfNotExists(parent.Attributes(), "http.url", requestURL.String())
 			res, _ := span.Attributes().Get("http.response_content_length")

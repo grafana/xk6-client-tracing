@@ -16,6 +16,7 @@ var (
 	httpStatusesSuccess = []int64{200, 201, 202, 204}
 	httpStatusesError   = []int64{400, 401, 403, 404, 405, 406, 408, 409, 410, 411, 412, 413, 414, 415, 417, 428, 427, 500, 501, 502}
 	httpMethods         = []string{http.MethodGet, http.MethodDelete, http.MethodPost, http.MethodPut, http.MethodPatch}
+	httpContentTypes    = []string{"application/json", "application/xml", "application/x-www-form-urlencoded", "text/plain", "text/html"}
 	operations          = []string{"get", "list", "query", "search", "set", "add", "create", "update", "send", "remove", "delete"}
 	serviceSuffix       = []string{"", "", "service", "backend", "api", "proxy", "engine"}
 	dbNames             = []string{"redis", "mysql", "postgres", "memcached", "mongodb", "elasticsearch"}
@@ -73,6 +74,10 @@ func HTTPStatusErr() int64 {
 
 func HTTPMethod() string {
 	return SelectElement(httpMethods)
+}
+
+func HTTPContentType() []any {
+	return []any{SelectElement(httpContentTypes)}
 }
 
 func DBService() string {
