@@ -23,15 +23,17 @@ var (
 	resources           = []string{
 		"order", "payment", "customer", "product", "stock", "inventory",
 		"shipping", "billing", "checkout", "cart", "search", "analytics"}
+
+	rnd *rand.Rand
 )
 
 func init() {
 	seed, _ := crand.Int(crand.Reader, big.NewInt(int64(^uint64(0)>>1)))
-	rand.Seed(seed.Int64())
+	rnd = rand.New(rand.NewSource(seed.Int64()))
 }
 
 func SelectElement[T any](elements []T) T {
-	return elements[rand.Intn(len(elements))]
+	return elements[rnd.Intn(len(elements))]
 }
 
 func String(n int) string {
@@ -47,17 +49,17 @@ func K6String(n int) string {
 }
 
 func IntBetween(min, max int) int {
-	n := rand.Intn(max - min)
+	n := rnd.Intn(max - min)
 	return min + n
 }
 
 func Duration(min, max time.Duration) time.Duration {
-	n := rand.Int63n(int64(max) - int64(min))
+	n := rnd.Int63n(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
 func IPAddr() string {
-	return fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255))
+	return fmt.Sprintf("192.168.%d.%d", rnd.Intn(255), rnd.Intn(255))
 }
 
 func Port() int {
@@ -110,12 +112,12 @@ func OperationForResource(resource string) string {
 
 func TraceID() pcommon.TraceID {
 	var b [16]byte
-	_, _ = rand.Read(b[:]) // always returns nil error
+	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
 }
 
 func SpanID() pcommon.SpanID {
 	var b [8]byte
-	_, _ = rand.Read(b[:]) // always returns nil error
+	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
 }
