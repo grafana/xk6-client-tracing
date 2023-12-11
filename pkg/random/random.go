@@ -16,21 +16,24 @@ var (
 	httpStatusesSuccess = []int64{200, 201, 202, 204}
 	httpStatusesError   = []int64{400, 401, 403, 404, 405, 406, 408, 409, 410, 411, 412, 413, 414, 415, 417, 428, 427, 500, 501, 502}
 	httpMethods         = []string{http.MethodGet, http.MethodDelete, http.MethodPost, http.MethodPut, http.MethodPatch}
+	httpContentTypes    = []string{"application/json", "application/xml", "application/x-www-form-urlencoded", "text/plain", "text/html"}
 	operations          = []string{"get", "list", "query", "search", "set", "add", "create", "update", "send", "remove", "delete"}
 	serviceSuffix       = []string{"", "", "service", "backend", "api", "proxy", "engine"}
 	dbNames             = []string{"redis", "mysql", "postgres", "memcached", "mongodb", "elasticsearch"}
 	resources           = []string{
 		"order", "payment", "customer", "product", "stock", "inventory",
 		"shipping", "billing", "checkout", "cart", "search", "analytics"}
+
+	rnd *rand.Rand
 )
 
 func init() {
 	seed, _ := crand.Int(crand.Reader, big.NewInt(int64(^uint64(0)>>1)))
-	rand.Seed(seed.Int64())
+	rnd = rand.New(rand.NewSource(seed.Int64()))
 }
 
 func SelectElement[T any](elements []T) T {
-	return elements[rand.Intn(len(elements))]
+	return elements[rnd.Intn(len(elements))]
 }
 
 func String(n int) string {
@@ -46,17 +49,17 @@ func K6String(n int) string {
 }
 
 func IntBetween(min, max int) int {
-	n := rand.Intn(max - min)
+	n := rnd.Intn(max - min)
 	return min + n
 }
 
 func Duration(min, max time.Duration) time.Duration {
-	n := rand.Int63n(int64(max) - int64(min))
+	n := rnd.Int63n(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
 func IPAddr() string {
-	return fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255))
+	return fmt.Sprintf("192.168.%d.%d", rnd.Intn(255), rnd.Intn(255))
 }
 
 func Port() int {
@@ -73,6 +76,10 @@ func HTTPStatusErr() int64 {
 
 func HTTPMethod() string {
 	return SelectElement(httpMethods)
+}
+
+func HTTPContentType() []any {
+	return []any{SelectElement(httpContentTypes)}
 }
 
 func DBService() string {
@@ -105,12 +112,12 @@ func OperationForResource(resource string) string {
 
 func TraceID() pcommon.TraceID {
 	var b [16]byte
-	_, _ = rand.Read(b[:]) // always returns nil error
+	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
 }
 
 func SpanID() pcommon.SpanID {
 	var b [8]byte
-	_, _ = rand.Read(b[:]) // always returns nil error
+	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
 }

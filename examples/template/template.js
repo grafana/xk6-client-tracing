@@ -35,6 +35,7 @@ const traceTemplates = [
     },
     {
         defaults: {
+            attributes: {"numbers": ["one", "two", "three"]},
             attributeSemantics: tracing.SEMANTICS_HTTP,
         },
         spans: [
@@ -54,7 +55,7 @@ const traceTemplates = [
         defaults: traceDefaults,
         spans: [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
-            {service: "shop-backend", name: "authenticate"},
+            {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
         ]
     },
