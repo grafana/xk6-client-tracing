@@ -21,7 +21,9 @@ const client = new tracing.Client({
 const traceDefaults = {
     attributeSemantics: tracing.SEMANTICS_HTTP,
     attributes: {"one": "three"},
-    randomAttributes: {count: 2, cardinality: 5}
+    randomAttributes: {count: 2, cardinality: 5},
+    eventDefaults: {generateExceptionOnError: true, count: 1.0, randomAttributes: {count: 2, cardinality: 3}},
+    linkDefaults: {linkToPreviousSpanIndex: true, count: 1.0, randomAttributes: {count: 2, cardinality: 3}},
 }
 
 const traceTemplates = [
@@ -61,6 +63,16 @@ const traceTemplates = [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
+        ]
+    },
+    {
+        defaults: traceDefaults,
+        spans: [
+            {service: "shop-backend", attributes: {"http.status_code": 403}},
+            {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
+            {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
+            {service: "test-random", name: "events", randomEvents: {exceptionCount: 1, count: 2, randomAttributes: {count: 5, cardinality: 2}}},
+            {service: "test-random", name: "links", randomLinks: {linkToPreviousSpanIndex: true, count: 2, randomAttributes: {count: 3, cardinality: 2}}}
         ]
     },
 ]
