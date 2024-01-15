@@ -81,10 +81,10 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 			spans := collectSpansFromTrace(traces)
 
 			assert.Len(t, spans, len(template.Spans))
-			for i, span := range spans {
+			for _, span := range spans {
 				events := span.Events()
 				links := span.Links()
-				checkEventsLinksLength := func(spanIndex, expectedTemplate, expectedRandom int, spanName string) {
+				checkEventsLinksLength := func(expectedTemplate, expectedRandom int, spanName string) {
 					expected := expectedTemplate + expectedRandom
 					// because default rate is 0.5
 					assert.GreaterOrEqual(t, events.Len(), expected, "test name: %s events", spanName)
@@ -103,7 +103,7 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 
 				switch span.Name() {
 				case "only_default":
-					checkEventsLinksLength(i, 0, 0, span.Name())
+					checkEventsLinksLength(0, 0, span.Name())
 					if events.Len() > 0 {
 						// check default event with 3 random attributes
 						event := events.At(0)
@@ -119,13 +119,13 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 						assert.NotEqual(t, span.ParentSpanID(), link.SpanID())
 					}
 				case "default_and_template":
-					checkEventsLinksLength(i, 1, 0, span.Name())
+					checkEventsLinksLength(1, 0, span.Name())
 					checkLinks()
 				case "default_and_random":
-					checkEventsLinksLength(i, 0, 2, span.Name())
+					checkEventsLinksLength(0, 2, span.Name())
 					checkLinks()
 				case "default_template_random":
-					checkEventsLinksLength(i, 1, 2, span.Name())
+					checkEventsLinksLength(1, 2, span.Name())
 					checkLinks()
 				case "default_generate_on_error":
 					// there should be at least one event
