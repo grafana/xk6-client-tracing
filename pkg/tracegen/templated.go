@@ -96,8 +96,6 @@ type TraceTemplate struct {
 }
 
 type Link struct {
-	// LinkToPreviousSpanIndex true will set TraceID and SpanID the same as the previous span
-	LinkToPreviousSpanIndex bool `js:"linkToPreviousSpanIndex"`
 	// Attributes for this link
 	Attributes map[string]interface{} `js:"attributes"`
 	// Generate random attributes for this link
@@ -114,9 +112,6 @@ type Event struct {
 }
 
 type LinkParams struct {
-	// LinkToPreviousSpanIndex true will set TraceID and SpanID the same as the previous span
-	// Unless it is the first span then a random TraceID and a random SpanID will be used
-	LinkToPreviousSpanIndex bool `js:"linkToPreviousSpanIndex"`
 	// Rate of random links per each span
 	Rate float32 `js:"rate"`
 	// Generate random attributes for this link
@@ -334,7 +329,9 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 	span.Links().EnsureCapacity(len(tmpl.links))
 	for _, l := range tmpl.links {
 		link := span.Links().AppendEmpty()
-		if l.LinkToPreviousSpanIndex && parent != nil {
+		// default to linking to previous span if exist
+		// maybe we will be able support linking to specific spans in the future
+		if parent != nil {
 			link.SetTraceID(traceID)
 			link.SetSpanID(parent.SpanID())
 		} else {
@@ -573,22 +570,19 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	var linkDefaults internalLinkParams
 	if linkDefaultsRate > 1 {
 		linkDefaults = internalLinkParams{
-			LinkToPreviousSpanIndex: defaults.LinkDefaults.LinkToPreviousSpanIndex,
-			RandomAttributes:        defaults.LinkDefaults.RandomAttributes,
-			Count:                   int(linkDefaultsRate),
+			RandomAttributes: defaults.LinkDefaults.RandomAttributes,
+			Count:            int(linkDefaultsRate),
 		}
 	} else if rand.Float32() < linkDefaultsRate {
 		linkDefaults = internalLinkParams{
-			LinkToPreviousSpanIndex: defaults.LinkDefaults.LinkToPreviousSpanIndex,
-			RandomAttributes:        defaults.LinkDefaults.RandomAttributes,
-			Count:                   1,
+			RandomAttributes: defaults.LinkDefaults.RandomAttributes,
+			Count:            1,
 		}
 	}
 
 	randomLinks := internalLinkParams{
-		LinkToPreviousSpanIndex: tmpl.RandomLinks.LinkToPreviousSpanIndex,
-		Count:                   int(tmpl.RandomLinks.Rate),
-		RandomAttributes:        tmpl.RandomEvents.RandomAttributes,
+		Count:            int(tmpl.RandomLinks.Rate),
+		RandomAttributes: tmpl.RandomEvents.RandomAttributes,
 	}
 
 	// initialize all links but need
@@ -775,20 +769,17 @@ func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks inter
 	}
 
 	links := make([]Link, 0, count)
-	newLink := func(linkToPar bool) *Link {
+	newLink := func() *Link {
 		return &Link{
-			LinkToPreviousSpanIndex: linkToPar,
-			Attributes:              make(map[string]interface{}),
+			Attributes: make(map[string]interface{}),
 		}
 	}
 
 	for _, l := range tmplLinks {
-		link := newLink(l.LinkToPreviousSpanIndex)
-
+		link := newLink()
 		for k, v := range l.Attributes {
 			link.Attributes[k] = v
 		}
-
 		for k, v := range initializeRandomAttributes(l.RandomAttributes) {
 			link.Attributes[k] = random.SelectElement(v)
 		}
@@ -796,7 +787,7 @@ func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks inter
 	}
 
 	for i := 0; i < randomLinks.Count; i++ {
-		link := newLink(randomLinks.LinkToPreviousSpanIndex)
+		link := newLink()
 		for k, v := range initializeRandomAttributes(randomLinks.RandomAttributes) {
 			link.Attributes[k] = random.SelectElement(v)
 		}
@@ -804,7 +795,7 @@ func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks inter
 	}
 
 	for i := 0; i < linkDefaults.Count; i++ {
-		link := newLink(linkDefaults.LinkToPreviousSpanIndex)
+		link := newLink()
 		for k, v := range initializeRandomAttributes(linkDefaults.RandomAttributes) {
 			link.Attributes[k] = random.SelectElement(v)
 		}

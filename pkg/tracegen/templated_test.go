@@ -58,15 +58,15 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
 			RandomAttributes: &AttributeParams{Count: 3},
-			LinkDefaults:     LinkParams{LinkToPreviousSpanIndex: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			LinkDefaults:     LinkParams{Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
 			EventDefaults:    EventParams{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
 		},
 		Spans: []SpanTemplate{
 			// do not change order of the first one
 			{Service: "test-service", Name: ptr("only_default")},
-			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{LinkToPreviousSpanIndex: true, Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
-			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{LinkToPreviousSpanIndex: false, Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
-			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{LinkToPreviousSpanIndex: true, Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{LinkToPreviousSpanIndex: false, Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
+			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
 			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{"http.status_code": 400}},
 		},
 	}
@@ -93,6 +93,14 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 					assert.LessOrEqual(t, links.Len(), expected+1, "test name: %s links", spanName)
 				}
 
+				checkLinks := func() {
+					for i := 0; i < links.Len(); i++ {
+						link := links.At(i)
+						assert.Equal(t, span.TraceID(), link.TraceID())
+						assert.Equal(t, span.ParentSpanID(), link.SpanID())
+					}
+				}
+
 				switch span.Name() {
 				case "only_default":
 					checkEventsLinksLength(i, 0, 0, span.Name())
@@ -107,15 +115,18 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 						// the first span, there is no previous span
 						link := links.At(0)
 						assert.Equal(t, 3, len(link.Attributes().AsRaw()))
-						assert.NotEqual(t, span.TraceID().String(), link.TraceID())
+						assert.NotEqual(t, span.TraceID(), link.TraceID())
 						assert.NotEqual(t, span.ParentSpanID(), link.SpanID())
 					}
 				case "default_and_template":
 					checkEventsLinksLength(i, 1, 0, span.Name())
+					checkLinks()
 				case "default_and_random":
 					checkEventsLinksLength(i, 0, 2, span.Name())
+					checkLinks()
 				case "default_template_random":
 					checkEventsLinksLength(i, 1, 2, span.Name())
+					checkLinks()
 				case "default_generate_on_error":
 					// there should be at least one event
 					assert.GreaterOrEqual(t, events.Len(), 0, "test name: %s events", "default generate on error")
