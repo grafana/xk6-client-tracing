@@ -71,8 +71,8 @@ const traceTemplates = [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
-            {service: "test-random", name: "events", randomEvents: {exceptionCount: 1, count: 2, randomAttributes: {count: 5, cardinality: 2}}},
-            {service: "test-random", name: "links", randomLinks: {linkToPreviousSpanIndex: true, count: 2, randomAttributes: {count: 3, cardinality: 2}}}
+            {service: "cart-service", name: "checkout", randomEvents: {exceptionCount: 1, count: 2, randomAttributes: {count: 5, cardinality: 2}}},
+            {service: "billing-service", name: "payment", randomLinks: {linkToPreviousSpanIndex: true, count: 2, randomAttributes: {count: 3, cardinality: 2}}}
         ]
     },
 ]

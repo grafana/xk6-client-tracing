@@ -2,6 +2,7 @@ package tracegen
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,9 +52,9 @@ type SpanDefaults struct {
 	// RandomAttributes random attributes generated for each span.
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 	// Random events generated for each span
-	EventDefaults EventDefaults `js:"eventDefaults"`
+	EventDefaults EventParams `js:"eventDefaults"`
 	// Random links generated for each span
-	LinkDefaults LinkDefaults `js:"linkDefaults"`
+	LinkDefaults LinkParams `js:"linkDefaults"`
 }
 
 // SpanTemplate parameters that define how a span is created.
@@ -81,9 +82,9 @@ type SpanTemplate struct {
 	// List of links for the span with specific parameters
 	Links []Link `js:"links"`
 	// Generate random events for the span
-	RandomEvents RandomEvents `js:"randomEvents"`
+	RandomEvents EventParams `js:"randomEvents"`
 	// Generate random links for the span
-	RandomLinks RandomLinks `js:"randomLinks"`
+	RandomLinks LinkParams `js:"randomLinks"`
 }
 
 // TraceTemplate describes how all a trace and it's spans are generated.
@@ -112,7 +113,7 @@ type Event struct {
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
-type LinkDefaults struct {
+type LinkParams struct {
 	// LinkToPreviousSpanIndex true will set TraceID and SpanID the same as the previous span
 	// Unless it is the first span then a random TraceID and a random SpanID will be used
 	LinkToPreviousSpanIndex bool `js:"linkToPreviousSpanIndex"`
@@ -122,41 +123,26 @@ type LinkDefaults struct {
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
-type EventDefaults struct {
+type EventParams struct {
 	// Generate exception event if status code of the span is >= 400
 	GenerateExceptionOnError bool `js:"generateExceptionOnError"`
+	// Rate of exception events per each span
+	ExceptionRate float32 `js:"exceptionRate"`
 	// Rate of random events per each span
 	Rate float32 `js:"rate"`
 	// Generate random attributes for this event
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
-type RandomEvents struct {
-	// Number of random exception events to generate for the span
-	ExceptionCount int `js:"exceptionCount"`
-	// Number of non-exception events to generate for the span
-	Count int `js:"count"`
-	// Generate random attributes for these events
-	RandomAttributes *AttributeParams `js:"randomAttributes"`
-}
-
-type RandomLinks struct {
-	// LinkToPreviousSpanIndex true will set TraceID and SpanID the same as the previous span
-	LinkToPreviousSpanIndex bool `js:"linkToPreviousSpanIndex"`
-	// Number of links to generate for the span
-	Count int `js:"count"`
-	// Generate random attributes for these links
-	RandomAttributes *AttributeParams `js:"randomAttributes"`
-}
-
-type internalLinkDefaults struct {
+type internalLinkParams struct {
 	LinkToPreviousSpanIndex bool
 	Count                   int
 	RandomAttributes        *AttributeParams
 }
 
-type internalEventDefaults struct {
+type internalEventParams struct {
 	GenerateExceptionOnError bool
+	ExceptionCount           int
 	Count                    int
 	RandomAttributes         *AttributeParams
 }
@@ -542,47 +528,71 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
 
 	eventDefaultsRate := defaults.EventDefaults.Rate
-	var eventDefaults internalEventDefaults
+	var eventDefaults internalEventParams
 	// if rate is more than 1, use whole integers
 	if eventDefaultsRate > 1 {
-		eventDefaults = internalEventDefaults{
+		eventDefaults = internalEventParams{
 			GenerateExceptionOnError: defaults.EventDefaults.GenerateExceptionOnError,
 			RandomAttributes:         defaults.EventDefaults.RandomAttributes,
 			Count:                    int(eventDefaultsRate),
+			ExceptionCount:           int(defaults.EventDefaults.ExceptionRate),
 		}
-	} else if idx%int(1/eventDefaultsRate) == 0 {
+	} else {
+		var count, exeptionCount int
+		if rand.Float32() < eventDefaultsRate {
+			count = 1
+		}
+
+		if rand.Float32() < eventDefaultsRate {
+			exeptionCount = 1
+		}
+
 		// if rate is less than one
-		eventDefaults = internalEventDefaults{
+		eventDefaults = internalEventParams{
 			GenerateExceptionOnError: defaults.EventDefaults.GenerateExceptionOnError,
 			RandomAttributes:         defaults.EventDefaults.RandomAttributes,
-			Count:                    1,
+			Count:                    count,
+			ExceptionCount:           exeptionCount,
 		}
 	}
 
+	randomEvents := internalEventParams{
+		GenerateExceptionOnError: tmpl.RandomEvents.GenerateExceptionOnError,
+		RandomAttributes:         tmpl.RandomEvents.RandomAttributes,
+		Count:                    int(tmpl.RandomEvents.Rate),
+		ExceptionCount:           int(tmpl.RandomEvents.ExceptionRate),
+	}
+
 	// generate all non-exception events
-	span.events = g.initializeEvents(tmpl.Events, tmpl.RandomEvents, eventDefaults)
+	span.events = g.initializeEvents(tmpl.Events, randomEvents, eventDefaults)
 
 	// need span status to determine if an exception event should occur
 	span.generateExceptionEvents = defaults.EventDefaults.GenerateExceptionOnError
 
 	linkDefaultsRate := defaults.LinkDefaults.Rate
-	var linkDefaults internalLinkDefaults
+	var linkDefaults internalLinkParams
 	if linkDefaultsRate > 1 {
-		linkDefaults = internalLinkDefaults{
+		linkDefaults = internalLinkParams{
 			LinkToPreviousSpanIndex: defaults.LinkDefaults.LinkToPreviousSpanIndex,
 			RandomAttributes:        defaults.LinkDefaults.RandomAttributes,
 			Count:                   int(linkDefaultsRate),
 		}
-	} else if idx%int(1/linkDefaultsRate) == 0 {
-		linkDefaults = internalLinkDefaults{
+	} else if rand.Float32() < linkDefaultsRate {
+		linkDefaults = internalLinkParams{
 			LinkToPreviousSpanIndex: defaults.LinkDefaults.LinkToPreviousSpanIndex,
 			RandomAttributes:        defaults.LinkDefaults.RandomAttributes,
 			Count:                   1,
 		}
 	}
 
+	randomLinks := internalLinkParams{
+		LinkToPreviousSpanIndex: tmpl.RandomLinks.LinkToPreviousSpanIndex,
+		Count:                   int(tmpl.RandomLinks.Rate),
+		RandomAttributes:        tmpl.RandomEvents.RandomAttributes,
+	}
+
 	// initialize all links but need
-	span.links = g.initializeLinks(tmpl.Links, tmpl.RandomLinks, linkDefaults)
+	span.links = g.initializeLinks(tmpl.Links, randomLinks, linkDefaults)
 
 	// set span name
 	if tmpl.Name != nil {
@@ -679,7 +689,7 @@ func initializeRandomAttributes(attributeParams *AttributeParams) map[string][]i
 	return attributes
 }
 
-func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents RandomEvents, eventDefaults internalEventDefaults) []Event {
+func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents internalEventParams, eventDefaults internalEventParams) []Event {
 	count := len(tmplEvents) + randomEvents.Count + eventDefaults.Count
 
 	if count == 0 {
@@ -757,7 +767,7 @@ func generateRandomExceptionStackTrace() string {
 	return "panic: " + random.SelectElement(panics) + "\n" + random.SelectElement(functions)
 }
 
-func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks RandomLinks, linkDefaults internalLinkDefaults) []Link {
+func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks internalLinkParams, linkDefaults internalLinkParams) []Link {
 	count := len(tmplLinks) + randomLinks.Count + linkDefaults.Count
 
 	if count == 0 {

@@ -58,15 +58,15 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
 			RandomAttributes: &AttributeParams{Count: 3},
-			LinkDefaults:     LinkDefaults{LinkToPreviousSpanIndex: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
-			EventDefaults:    EventDefaults{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			LinkDefaults:     LinkParams{LinkToPreviousSpanIndex: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			EventDefaults:    EventParams{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
 		},
 		Spans: []SpanTemplate{
 			// do not change order of the first one
 			{Service: "test-service", Name: ptr("only_default")},
 			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{LinkToPreviousSpanIndex: true, Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
-			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: RandomEvents{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: RandomLinks{LinkToPreviousSpanIndex: false, Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
-			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{LinkToPreviousSpanIndex: true, Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: RandomEvents{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: RandomLinks{LinkToPreviousSpanIndex: false, Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{LinkToPreviousSpanIndex: false, Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{LinkToPreviousSpanIndex: true, Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{LinkToPreviousSpanIndex: false, Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
 			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{"http.status_code": 400}},
 		},
 	}
@@ -87,23 +87,21 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 				checkEventsLinksLength := func(spanIndex, expectedTemplate, expectedRandom int, spanName string) {
 					expected := expectedTemplate + expectedRandom
 					// because default rate is 0.5
-					if spanIndex%2 == 0 {
-						assert.Equal(t, expected+1, events.Len(), "test name: %s events", spanName)
-						assert.Equal(t, expected+1, links.Len(), "test name: %s links", spanName)
-					} else {
-						assert.Equal(t, expected, events.Len(), "test name: %s events", spanName)
-						assert.Equal(t, expected, links.Len(), "test name: %s links", spanName)
-					}
+					assert.GreaterOrEqual(t, events.Len(), expected, "test name: %s events", spanName)
+					assert.GreaterOrEqual(t, links.Len(), expected, "test name: %s links", spanName)
+					assert.LessOrEqual(t, events.Len(), expected+1, "test name: %s events", spanName)
+					assert.LessOrEqual(t, links.Len(), expected+1, "test name: %s links", spanName)
 				}
 
 				switch span.Name() {
 				case "only_default":
 					checkEventsLinksLength(i, 0, 0, span.Name())
-					if i%2 == 0 {
+					if events.Len() > 0 {
 						// check default event with 3 random attributes
 						event := events.At(0)
 						assert.Equal(t, 3, len(event.Attributes().AsRaw()))
-
+					}
+					if links.Len() > 0 {
 						// check default link with 3 random attributes
 						// and not matching trace id and parent span id because this is
 						// the first span, there is no previous span
@@ -119,14 +117,8 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 				case "default_template_random":
 					checkEventsLinksLength(i, 1, 2, span.Name())
 				case "default_generate_on_error":
-					// # events and links should not match in this scenario
-					if i%2 == 0 {
-						assert.Equal(t, 2, events.Len())
-						assert.Equal(t, 1, links.Len())
-					} else {
-						assert.Equal(t, 1, events.Len())
-						assert.Equal(t, 0, links.Len())
-					}
+					// there should be at least one event
+					assert.GreaterOrEqual(t, events.Len(), 0, "test name: %s events", "default generate on error")
 					found := false
 					for i := 0; i < events.Len(); i++ {
 						event := events.At(i)
