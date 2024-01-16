@@ -58,8 +58,8 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
 			RandomAttributes: &AttributeParams{Count: 3},
-			LinkDefaults:     LinkParams{Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
-			EventDefaults:    EventParams{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			RandomLinks:      LinkParams{Rate: 1, RandomAttributes: &AttributeParams{Count: 3}},
+			RandomEvents:     EventParams{GenerateExceptionOnError: true, Rate: 1, RandomAttributes: &AttributeParams{Count: 3}},
 		},
 		Spans: []SpanTemplate{
 			// do not change order of the first one

@@ -52,9 +52,9 @@ type SpanDefaults struct {
 	// RandomAttributes random attributes generated for each span.
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 	// Random events generated for each span
-	EventDefaults EventParams `js:"eventDefaults"`
+	RandomEvents EventParams `js:"randomEvents"`
 	// Random links generated for each span
-	LinkDefaults LinkParams `js:"linkDefaults"`
+	RandomLinks LinkParams `js:"randomLinks"`
 }
 
 // SpanTemplate parameters that define how a span is created.
@@ -130,9 +130,8 @@ type EventParams struct {
 }
 
 type internalLinkParams struct {
-	LinkToPreviousSpanIndex bool
-	Count                   int
-	RandomAttributes        *AttributeParams
+	Count            int
+	RandomAttributes *AttributeParams
 }
 
 type internalEventParams struct {
@@ -319,6 +318,7 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 			exceptionEvent := generateExceptionEvent()
 			event := span.Events().AppendEmpty()
 			event.SetName(exceptionEvent.Name)
+			event.SetTimestamp(pcommon.NewTimestampFromTime(end))
 			for k, v := range exceptionEvent.Attributes {
 				_ = event.Attributes().PutEmpty(k).FromRaw(v)
 			}
@@ -524,15 +524,15 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
 
-	eventDefaultsRate := defaults.EventDefaults.Rate
+	eventDefaultsRate := defaults.RandomEvents.Rate
 	var eventDefaults internalEventParams
 	// if rate is more than 1, use whole integers
 	if eventDefaultsRate > 1 {
 		eventDefaults = internalEventParams{
-			GenerateExceptionOnError: defaults.EventDefaults.GenerateExceptionOnError,
-			RandomAttributes:         defaults.EventDefaults.RandomAttributes,
+			GenerateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
+			RandomAttributes:         defaults.RandomEvents.RandomAttributes,
 			Count:                    int(eventDefaultsRate),
-			ExceptionCount:           int(defaults.EventDefaults.ExceptionRate),
+			ExceptionCount:           int(defaults.RandomEvents.ExceptionRate),
 		}
 	} else {
 		var count, exeptionCount int
@@ -546,8 +546,8 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 
 		// if rate is less than one
 		eventDefaults = internalEventParams{
-			GenerateExceptionOnError: defaults.EventDefaults.GenerateExceptionOnError,
-			RandomAttributes:         defaults.EventDefaults.RandomAttributes,
+			GenerateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
+			RandomAttributes:         defaults.RandomEvents.RandomAttributes,
 			Count:                    count,
 			ExceptionCount:           exeptionCount,
 		}
@@ -564,18 +564,18 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	span.events = g.initializeEvents(tmpl.Events, randomEvents, eventDefaults)
 
 	// need span status to determine if an exception event should occur
-	span.generateExceptionEvents = defaults.EventDefaults.GenerateExceptionOnError
+	span.generateExceptionEvents = defaults.RandomEvents.GenerateExceptionOnError
 
-	linkDefaultsRate := defaults.LinkDefaults.Rate
+	linkDefaultsRate := defaults.RandomLinks.Rate
 	var linkDefaults internalLinkParams
 	if linkDefaultsRate > 1 {
 		linkDefaults = internalLinkParams{
-			RandomAttributes: defaults.LinkDefaults.RandomAttributes,
+			RandomAttributes: defaults.RandomLinks.RandomAttributes,
 			Count:            int(linkDefaultsRate),
 		}
 	} else if rand.Float32() < linkDefaultsRate {
 		linkDefaults = internalLinkParams{
-			RandomAttributes: defaults.LinkDefaults.RandomAttributes,
+			RandomAttributes: defaults.RandomLinks.RandomAttributes,
 			Count:            1,
 		}
 	}
