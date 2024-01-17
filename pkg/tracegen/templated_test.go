@@ -52,6 +52,102 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 	}
 }
 
+func TestTemplatedGenerator_EventsLinks(t *testing.T) {
+	attributeSemantics := []OTelSemantics{SemanticsHTTP}
+	template := TraceTemplate{
+		Defaults: SpanDefaults{
+			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
+			RandomAttributes: &AttributeParams{Count: 3},
+			RandomLinks:      LinkParams{Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			RandomEvents:     EventParams{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+		},
+		Spans: []SpanTemplate{
+			// do not change order of the first one
+			{Service: "test-service", Name: ptr("only_default")},
+			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
+			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{"http.status_code": 400}},
+		},
+	}
+
+	for _, semantics := range attributeSemantics {
+		template.Defaults.AttributeSemantics = &semantics
+		gen, err := NewTemplatedGenerator(&template)
+		assert.NoError(t, err)
+
+		for i := 0; i < testRounds; i++ {
+			traces := gen.Traces()
+			spans := collectSpansFromTrace(traces)
+
+			assert.Len(t, spans, len(template.Spans))
+			for _, span := range spans {
+				events := span.Events()
+				links := span.Links()
+				checkEventsLinksLength := func(expectedTemplate, expectedRandom int, spanName string) {
+					expected := expectedTemplate + expectedRandom
+					// because default rate is 0.5
+					assert.GreaterOrEqual(t, events.Len(), expected, "test name: %s events", spanName)
+					assert.GreaterOrEqual(t, links.Len(), expected, "test name: %s links", spanName)
+					assert.LessOrEqual(t, events.Len(), expected+1, "test name: %s events", spanName)
+					assert.LessOrEqual(t, links.Len(), expected+1, "test name: %s links", spanName)
+				}
+
+				checkLinks := func() {
+					for i := 0; i < links.Len(); i++ {
+						link := links.At(i)
+						assert.Equal(t, span.TraceID(), link.TraceID())
+						assert.Equal(t, span.ParentSpanID(), link.SpanID())
+					}
+				}
+
+				switch span.Name() {
+				case "only_default":
+					checkEventsLinksLength(0, 0, span.Name())
+					if events.Len() > 0 {
+						// check default event with 3 random attributes
+						event := events.At(0)
+						assert.Equal(t, 3, len(event.Attributes().AsRaw()))
+					}
+					if links.Len() > 0 {
+						// check default link with 3 random attributes
+						// and not matching trace id and parent span id because this is
+						// the first span, there is no previous span
+						link := links.At(0)
+						assert.Equal(t, 3, len(link.Attributes().AsRaw()))
+						assert.NotEqual(t, span.TraceID(), link.TraceID())
+						assert.NotEqual(t, span.ParentSpanID(), link.SpanID())
+					}
+				case "default_and_template":
+					checkEventsLinksLength(1, 0, span.Name())
+					checkLinks()
+				case "default_and_random":
+					checkEventsLinksLength(0, 2, span.Name())
+					checkLinks()
+				case "default_template_random":
+					checkEventsLinksLength(1, 2, span.Name())
+					checkLinks()
+				case "default_generate_on_error":
+					// there should be at least one event
+					assert.GreaterOrEqual(t, events.Len(), 0, "test name: %s events", "default generate on error")
+					found := false
+					for i := 0; i < events.Len(); i++ {
+						event := events.At(i)
+						if event.Name() == "exception" {
+							found = true
+							assert.NotNil(t, event.Attributes().AsRaw()["exception.escape"])
+							assert.NotNil(t, event.Attributes().AsRaw()["exception.message"])
+							assert.NotNil(t, event.Attributes().AsRaw()["exception.stacktrace"])
+							assert.NotNil(t, event.Attributes().AsRaw()["exception.type"])
+						}
+					}
+					assert.True(t, found, "exception event not found")
+				}
+			}
+		}
+	}
+}
+
 func attributesWithPrefix(span ptrace.Span, prefix string) int {
 	var count int
 	span.Attributes().Range(func(k string, _ pcommon.Value) bool {

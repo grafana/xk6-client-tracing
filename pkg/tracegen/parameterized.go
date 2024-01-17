@@ -114,7 +114,12 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 	event := span.Events().AppendEmpty()
 	event.SetName(random.K6String(12))
 	event.SetTimestamp(pcommon.NewTimestampFromTime(startTime))
-	event.Attributes().PutStr(random.K6String(12), random.K6String(12))
+	event.Attributes().PutStr(random.K6String(5), random.K6String(12))
+
+	link := span.Links().AppendEmpty()
+	link.SetTraceID(traceID)
+	link.SetSpanID(random.SpanID())
+	link.Attributes().PutStr(random.K6String(12), random.K6String(12))
 
 	status := span.Status()
 	status.SetCode(1)
