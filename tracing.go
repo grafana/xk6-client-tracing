@@ -144,13 +144,9 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 }
 
 type ClientConfig struct {
-	Exporter       exporterType `json:"type"`
-	Endpoint       string       `json:"url"`
-	Insecure       bool         `json:"insecure"`
-	TLSServerName  string       `json:"tls_server_name"`
-	TLSCertFile    string       `json:"tls_cert_file"`
-	TLSKeyFile     string       `json:"tls_key_file"`
-	TLSCAFile      string       `json:"tls_ca_file"`
+	Exporter       exporterType               `json:"type"`
+	Endpoint       string                     `json:"url"`
+	TLS            configtls.TLSClientSetting `json:"tls"`
 	Authentication struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
@@ -174,12 +170,12 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	)
 
 	tlsConfig := configtls.TLSClientSetting{
-		Insecure:   cfg.Insecure,
-		ServerName: cfg.TLSServerName,
+		Insecure:   cfg.TLS.Insecure,
+		ServerName: cfg.TLS.ServerName,
 		TLSSetting: configtls.TLSSetting{
-			CAFile:   cfg.TLSCAFile,
-			CertFile: cfg.TLSCertFile,
-			KeyFile:  cfg.TLSKeyFile,
+			CAFile:   cfg.TLS.CAFile,
+			CertFile: cfg.TLS.CertFile,
+			KeyFile:  cfg.TLS.KeyFile,
 		},
 	}
 
