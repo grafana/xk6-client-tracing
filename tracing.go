@@ -7,8 +7,6 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
-	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
-	"github.com/grafana/xk6-client-tracing/pkg/util"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	"github.com/pkg/errors"
 	"go.k6.io/k6/js/common"
@@ -27,6 +25,9 @@ import (
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
+	"github.com/grafana/xk6-client-tracing/pkg/util"
 )
 
 type exporterType string
@@ -143,9 +144,9 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 }
 
 type ClientConfig struct {
-	Exporter       exporterType `json:"type"`
-	Endpoint       string       `json:"url"`
-	Insecure       bool         `json:"insecure"`
+	Exporter       exporterType               `json:"type"`
+	Endpoint       string                     `json:"url"`
+	TLS            configtls.TLSClientSetting `json:"tls"`
 	Authentication struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
@@ -168,15 +169,23 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		exporterCfg component.Config
 	)
 
+	tlsConfig := configtls.TLSClientSetting{
+		Insecure:   cfg.TLS.Insecure,
+		ServerName: cfg.TLS.ServerName,
+		TLSSetting: configtls.TLSSetting{
+			CAFile:   cfg.TLS.CAFile,
+			CertFile: cfg.TLS.CertFile,
+			KeyFile:  cfg.TLS.KeyFile,
+		},
+	}
+
 	switch cfg.Exporter {
 	case exporterNone, exporterOTLP:
 		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlpexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
-			Endpoint: cfg.Endpoint,
-			TLSSetting: configtls.TLSClientSetting{
-				Insecure: cfg.Insecure,
-			},
+			Endpoint:   cfg.Endpoint,
+			TLSSetting: tlsConfig,
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
@@ -185,10 +194,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = jaegerexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*jaegerexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
-			Endpoint: cfg.Endpoint,
-			TLSSetting: configtls.TLSClientSetting{
-				Insecure: cfg.Insecure,
-			},
+			Endpoint:   cfg.Endpoint,
+			TLSSetting: tlsConfig,
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
@@ -197,10 +204,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = otlphttpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlphttpexporter.Config).HTTPClientSettings = confighttp.HTTPClientSettings{
-			Endpoint: cfg.Endpoint,
-			TLSSetting: configtls.TLSClientSetting{
-				Insecure: cfg.Insecure,
-			},
+			Endpoint:   cfg.Endpoint,
+			TLSSetting: tlsConfig,
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
