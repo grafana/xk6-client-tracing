@@ -12,7 +12,9 @@ const orgid = __ENV.TEMPO_X_SCOPE_ORGID || "k6-test"
 const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
-    insecure: true,
+    tls: {
+      insecure: false,
+    },
     headers: {
         "X-Scope-Orgid": orgid
     }
