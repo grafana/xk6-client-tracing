@@ -179,8 +179,9 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	)
 
 	tlsConfig := configtls.TLSClientSetting{
-		Insecure:   cfg.TLS.Insecure,
-		ServerName: cfg.TLS.ServerName,
+		Insecure:           cfg.TLS.Insecure,
+		InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
+		ServerName:         cfg.TLS.ServerName,
 		TLSSetting: configtls.TLSSetting{
 			CAFile:   cfg.TLS.CAFile,
 			CertFile: cfg.TLS.CertFile,
