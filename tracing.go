@@ -143,10 +143,19 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 	return rt.ToValue(generator).ToObject(rt)
 }
 
+type TLSClientConfig struct {
+	Insecure           bool   `json:"insecure"`
+	InsecureSkipVerify bool   `json:"insecure_skip_verify"`
+	ServerName         string `json:"server_name_override"`
+	CAFile             string `json:"ca_file"`
+	CertFile           string `json:"cert_file"`
+	KeyFile            string `json:"key_file"`
+}
+
 type ClientConfig struct {
-	Exporter       exporterType               `json:"type"`
-	Endpoint       string                     `json:"url"`
-	TLS            configtls.TLSClientSetting `json:"tls"`
+	Exporter       exporterType    `json:"type"`
+	Endpoint       string          `json:"url"`
+	TLS            TLSClientConfig `json:"tls"`
 	Authentication struct {
 		User     string `json:"user"`
 		Password string `json:"password"`
