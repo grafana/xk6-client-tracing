@@ -144,23 +144,23 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 }
 
 type TLSClientConfig struct {
-	Insecure           bool   `json:"insecure"`
-	InsecureSkipVerify bool   `json:"insecure_skip_verify"`
-	ServerName         string `json:"server_name_override"`
-	CAFile             string `json:"ca_file"`
-	CertFile           string `json:"cert_file"`
-	KeyFile            string `json:"key_file"`
+	Insecure           bool   `js:"insecure"`
+	InsecureSkipVerify bool   `js:"insecure_skip_verify"`
+	ServerName         string `js:"server_name"`
+	CAFile             string `js:"ca_file"`
+	CertFile           string `js:"cert_file"`
+	KeyFile            string `js:"key_file"`
 }
 
 type ClientConfig struct {
-	Exporter       exporterType    `json:"type"`
-	Endpoint       string          `json:"url"`
-	TLS            TLSClientConfig `json:"tls"`
+	Exporter       exporterType    `js:"exporter"`
+	Endpoint       string          `js:"endpoint"`
+	TLS            TLSClientConfig `js:"tls"`
 	Authentication struct {
-		User     string `json:"user"`
-		Password string `json:"password"`
+		User     string `js:"user"`
+		Password string `js:"password"`
 	}
-	Headers map[string]configopaque.String `json:"headers"`
+	Headers map[string]configopaque.String `js:"headers"`
 }
 
 type Client struct {
