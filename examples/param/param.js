@@ -11,7 +11,6 @@ const endpoint = __ENV.ENDPOINT || "otel-collector:4317"
 const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
-    insecure: true,
     tls: {
       insecure: false,
     }
