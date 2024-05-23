@@ -12,7 +12,7 @@ const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
     tls: {
-      insecure: false,
+      insecure: true,
     }
 });
 
