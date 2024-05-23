@@ -30,12 +30,25 @@ The configuration is an object with the following schema:
     endpoint: string,
     // The exporter protocol used for sending the traces: tracing.EXPORTER_OTLP or tracing.EXPORTER_JAEGER
     exporter: string,
-    // Whether insecure connections are allowed (optional, default: false)
-    insecure: bool,
-    // Credentials used for authentication
+    // Credentials used for authentication (optional)
     authentication: { user: string, password: string },
-    // Additional headers sent by the client
+    // Additional headers sent by the client (optional)
     headers: { string : string }
+    // TLS configuration
+    tls: {
+        // Whether insecure connections are allowed (optional, default: false)
+        insecure: boolean,
+        // Enable TLS but skip verification (optional, default: false)
+        insecure_skip_verify: boolean,
+        // The server name requested by the client (optional)
+        server_name: string,
+        // The path to the CA certificate file (optional)
+        ca_file: string,
+        // The path to the certificate file (optional)
+        cert_file: string,
+        // The path to the key file (optional)
+        key_file: string,
+    },
 }
 ```
 

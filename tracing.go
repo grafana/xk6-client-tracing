@@ -143,15 +143,24 @@ func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.
 	return rt.ToValue(generator).ToObject(rt)
 }
 
+type TLSClientConfig struct {
+	Insecure           bool   `js:"insecure"`
+	InsecureSkipVerify bool   `js:"insecure_skip_verify"`
+	ServerName         string `js:"server_name"`
+	CAFile             string `js:"ca_file"`
+	CertFile           string `js:"cert_file"`
+	KeyFile            string `js:"key_file"`
+}
+
 type ClientConfig struct {
-	Exporter       exporterType               `json:"type"`
-	Endpoint       string                     `json:"url"`
-	TLS            configtls.TLSClientSetting `json:"tls"`
+	Exporter       exporterType    `js:"exporter"`
+	Endpoint       string          `js:"endpoint"`
+	TLS            TLSClientConfig `js:"tls"`
 	Authentication struct {
-		User     string `json:"user"`
-		Password string `json:"password"`
+		User     string `js:"user"`
+		Password string `js:"password"`
 	}
-	Headers map[string]configopaque.String `json:"headers"`
+	Headers map[string]configopaque.String `js:"headers"`
 }
 
 type Client struct {
@@ -170,8 +179,9 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	)
 
 	tlsConfig := configtls.TLSClientSetting{
-		Insecure:   cfg.TLS.Insecure,
-		ServerName: cfg.TLS.ServerName,
+		Insecure:           cfg.TLS.Insecure,
+		InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
+		ServerName:         cfg.TLS.ServerName,
 		TLSSetting: configtls.TLSSetting{
 			CAFile:   cfg.TLS.CAFile,
 			CertFile: cfg.TLS.CertFile,
