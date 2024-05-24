@@ -129,18 +129,6 @@ type EventParams struct {
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
-type internalLinkParams struct {
-	Count            int
-	RandomAttributes *AttributeParams
-}
-
-type internalEventParams struct {
-	GenerateExceptionOnError bool
-	ExceptionCount           int
-	Count                    int
-	RandomAttributes         *AttributeParams
-}
-
 // NewTemplatedGenerator creates a new trace generator.
 func NewTemplatedGenerator(template *TraceTemplate) (*TemplatedGenerator, error) {
 	gen := &TemplatedGenerator{}
@@ -181,6 +169,18 @@ type internalResourceTemplate struct {
 	hostIP    string
 	transport string
 	hostPort  int
+}
+
+type internalLinkTemplate struct {
+	count            int
+	randomAttributes *AttributeParams
+}
+
+type internalEventTemplate struct {
+	count                    int
+	generateExceptionOnError bool
+	exceptionCount           int
+	randomAttributes         *AttributeParams
 }
 
 // Traces implements Generator for TemplatedGenerator
@@ -525,14 +525,14 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
 
 	eventDefaultsRate := defaults.RandomEvents.Rate
-	var eventDefaults internalEventParams
+	var eventDefaults internalEventTemplate
 	// if rate is more than 1, use whole integers
 	if eventDefaultsRate > 1 {
-		eventDefaults = internalEventParams{
-			GenerateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
-			RandomAttributes:         defaults.RandomEvents.RandomAttributes,
-			Count:                    int(eventDefaultsRate),
-			ExceptionCount:           int(defaults.RandomEvents.ExceptionRate),
+		eventDefaults = internalEventTemplate{
+			generateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
+			randomAttributes:         defaults.RandomEvents.RandomAttributes,
+			count:                    int(eventDefaultsRate),
+			exceptionCount:           int(defaults.RandomEvents.ExceptionRate),
 		}
 	} else {
 		var count, exeptionCount int
@@ -545,19 +545,19 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 		}
 
 		// if rate is less than one
-		eventDefaults = internalEventParams{
-			GenerateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
-			RandomAttributes:         defaults.RandomEvents.RandomAttributes,
-			Count:                    count,
-			ExceptionCount:           exeptionCount,
+		eventDefaults = internalEventTemplate{
+			generateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
+			randomAttributes:         defaults.RandomEvents.RandomAttributes,
+			count:                    count,
+			exceptionCount:           exeptionCount,
 		}
 	}
 
-	randomEvents := internalEventParams{
-		GenerateExceptionOnError: tmpl.RandomEvents.GenerateExceptionOnError,
-		RandomAttributes:         tmpl.RandomEvents.RandomAttributes,
-		Count:                    int(tmpl.RandomEvents.Rate),
-		ExceptionCount:           int(tmpl.RandomEvents.ExceptionRate),
+	randomEvents := internalEventTemplate{
+		generateExceptionOnError: tmpl.RandomEvents.GenerateExceptionOnError,
+		randomAttributes:         tmpl.RandomEvents.RandomAttributes,
+		count:                    int(tmpl.RandomEvents.Rate),
+		exceptionCount:           int(tmpl.RandomEvents.ExceptionRate),
 	}
 
 	// generate all non-exception events
@@ -567,22 +567,22 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	span.generateExceptionEvents = defaults.RandomEvents.GenerateExceptionOnError
 
 	linkDefaultsRate := defaults.RandomLinks.Rate
-	var linkDefaults internalLinkParams
+	var linkDefaults internalLinkTemplate
 	if linkDefaultsRate > 1 {
-		linkDefaults = internalLinkParams{
-			RandomAttributes: defaults.RandomLinks.RandomAttributes,
-			Count:            int(linkDefaultsRate),
+		linkDefaults = internalLinkTemplate{
+			randomAttributes: defaults.RandomLinks.RandomAttributes,
+			count:            int(linkDefaultsRate),
 		}
 	} else if rand.Float32() < linkDefaultsRate {
-		linkDefaults = internalLinkParams{
-			RandomAttributes: defaults.RandomLinks.RandomAttributes,
-			Count:            1,
+		linkDefaults = internalLinkTemplate{
+			randomAttributes: defaults.RandomLinks.RandomAttributes,
+			count:            1,
 		}
 	}
 
-	randomLinks := internalLinkParams{
-		Count:            int(tmpl.RandomLinks.Rate),
-		RandomAttributes: tmpl.RandomEvents.RandomAttributes,
+	randomLinks := internalLinkTemplate{
+		count:            int(tmpl.RandomLinks.Rate),
+		randomAttributes: tmpl.RandomEvents.RandomAttributes,
 	}
 
 	// initialize all links but need
@@ -683,8 +683,8 @@ func initializeRandomAttributes(attributeParams *AttributeParams) map[string][]i
 	return attributes
 }
 
-func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents internalEventParams, eventDefaults internalEventParams) []Event {
-	count := len(tmplEvents) + randomEvents.Count + eventDefaults.Count
+func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents internalEventTemplate, eventDefaults internalEventTemplate) []Event {
+	count := len(tmplEvents) + randomEvents.count + eventDefaults.count
 
 	if count == 0 {
 		return []Event{}
@@ -697,18 +697,18 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents i
 		events = append(events, event)
 	}
 
-	for i := 0; i < randomEvents.ExceptionCount; i++ {
+	for i := 0; i < randomEvents.exceptionCount; i++ {
 		event := generateExceptionEvent()
 		events = append(events, event)
 	}
 
-	for i := 0; i < randomEvents.Count; i++ {
-		event := generateEvent("", nil, randomEvents.RandomAttributes)
+	for i := 0; i < randomEvents.count; i++ {
+		event := generateEvent("", nil, randomEvents.randomAttributes)
 		events = append(events, event)
 	}
 
-	for i := 0; i < eventDefaults.Count; i++ {
-		event := generateEvent("", nil, eventDefaults.RandomAttributes)
+	for i := 0; i < eventDefaults.count; i++ {
+		event := generateEvent("", nil, eventDefaults.randomAttributes)
 		events = append(events, event)
 	}
 
@@ -761,8 +761,8 @@ func generateRandomExceptionStackTrace() string {
 	return "panic: " + random.SelectElement(panics) + "\n" + random.SelectElement(functions)
 }
 
-func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks internalLinkParams, linkDefaults internalLinkParams) []Link {
-	count := len(tmplLinks) + randomLinks.Count + linkDefaults.Count
+func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks internalLinkTemplate, linkDefaults internalLinkTemplate) []Link {
+	count := len(tmplLinks) + randomLinks.count + linkDefaults.count
 
 	if count == 0 {
 		return []Link{}
@@ -786,17 +786,17 @@ func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks inter
 		links = append(links, *link)
 	}
 
-	for i := 0; i < randomLinks.Count; i++ {
+	for i := 0; i < randomLinks.count; i++ {
 		link := newLink()
-		for k, v := range initializeRandomAttributes(randomLinks.RandomAttributes) {
+		for k, v := range initializeRandomAttributes(randomLinks.randomAttributes) {
 			link.Attributes[k] = random.SelectElement(v)
 		}
 		links = append(links, *link)
 	}
 
-	for i := 0; i < linkDefaults.Count; i++ {
+	for i := 0; i < linkDefaults.count; i++ {
 		link := newLink()
-		for k, v := range initializeRandomAttributes(linkDefaults.RandomAttributes) {
+		for k, v := range initializeRandomAttributes(linkDefaults.randomAttributes) {
 			link.Attributes[k] = random.SelectElement(v)
 		}
 		links = append(links, *link)
