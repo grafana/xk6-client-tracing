@@ -3,7 +3,7 @@ import tracing from 'k6/x/tracing';
 import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 export const options = {
-    vus: 1,
+    vus: 4,
     duration: "20m",
 };
 
@@ -13,7 +13,7 @@ const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
     tls: {
-      insecure: true,
+        insecure: true,
     },
     headers: {
         "X-Scope-Orgid": orgid
@@ -25,7 +25,6 @@ const traceDefaults = {
     attributes: {"one": "three"},
     randomAttributes: {count: 2, cardinality: 5},
     randomEvents: {generateExceptionOnError: true, rate: 1.0, randomAttributes: {count: 2, cardinality: 3}},
-    randomLinks: {rate: 1.0, randomAttributes: {count: 2, cardinality: 3}},
 }
 
 const traceTemplates = [
@@ -36,7 +35,7 @@ const traceTemplates = [
             {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}},
             {service: "auth-service", name: "authenticate"},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
-            {service: "article-service", name: "list-articles"},
+            {service: "article-service", name: "list-articles", links: [{attributes: {"link-type": "parent-child"}, randomAttributes: {count: 2, cardinality: 5}}]},
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
             {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
         ]
@@ -74,7 +73,7 @@ const traceTemplates = [
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
             {service: "cart-service", name: "checkout", randomEvents: {exceptionRate: 1, rate: 2, randomAttributes: {count: 5, cardinality: 2}}},
-            {service: "billing-service", name: "payment", randomLinks: {rate: 2, randomAttributes: {count: 3, cardinality: 2}}}
+            {service: "billing-service", name: "payment", randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}}}
         ]
     },
 ]

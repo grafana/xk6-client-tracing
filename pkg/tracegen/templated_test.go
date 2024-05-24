@@ -58,15 +58,15 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
 			RandomAttributes: &AttributeParams{Count: 3},
-			RandomLinks:      LinkParams{Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
+			RandomLinks:      &LinkParams{Count: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
 			RandomEvents:     EventParams{GenerateExceptionOnError: true, Rate: 0.5, RandomAttributes: &AttributeParams{Count: 3}},
 		},
 		Spans: []SpanTemplate{
 			// do not change order of the first one
 			{Service: "test-service", Name: ptr("only_default")},
 			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
-			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
-			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: LinkParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: &LinkParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
+			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: EventParams{Rate: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: &LinkParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
 			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{"http.status_code": 400}},
 		},
 	}

@@ -32,6 +32,10 @@ func init() {
 	rnd = rand.New(rand.NewSource(seed.Int64()))
 }
 
+func Rand() *rand.Rand {
+	return rnd
+}
+
 func SelectElement[T any](elements []T) T {
 	return elements[rnd.Intn(len(elements))]
 }

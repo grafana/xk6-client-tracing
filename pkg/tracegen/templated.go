@@ -54,7 +54,7 @@ type SpanDefaults struct {
 	// Random events generated for each span
 	RandomEvents EventParams `js:"randomEvents"`
 	// Random links generated for each span
-	RandomLinks LinkParams `js:"randomLinks"`
+	RandomLinks *LinkParams `js:"randomLinks"`
 }
 
 // SpanTemplate parameters that define how a span is created.
@@ -84,7 +84,7 @@ type SpanTemplate struct {
 	// Generate random events for the span
 	RandomEvents EventParams `js:"randomEvents"`
 	// Generate random links for the span
-	RandomLinks LinkParams `js:"randomLinks"`
+	RandomLinks *LinkParams `js:"randomLinks"`
 }
 
 // TraceTemplate describes how all a trace and it's spans are generated.
@@ -112,8 +112,8 @@ type Event struct {
 }
 
 type LinkParams struct {
-	// Rate of random links per each span
-	Rate float32 `js:"rate"`
+	// Count of random links per each span (default: 1)
+	Count float32 `js:"count"`
 	// Generate random attributes for this link
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
@@ -159,7 +159,7 @@ type internalSpanTemplate struct {
 	attributes              map[string]interface{}
 	randomAttributes        map[string][]interface{}
 	events                  []Event
-	links                   []Link
+	links                   []internalLinkTemplate
 	generateExceptionEvents bool
 }
 
@@ -172,8 +172,9 @@ type internalResourceTemplate struct {
 }
 
 type internalLinkTemplate struct {
-	count            int
-	randomAttributes *AttributeParams
+	rate             float32
+	attributes       map[string]interface{}
+	randomAttributes map[string][]interface{}
 }
 
 type internalEventTemplate struct {
@@ -325,21 +326,30 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 		}
 	}
 
-	// links
+	// generate links
 	span.Links().EnsureCapacity(len(tmpl.links))
 	for _, l := range tmpl.links {
+		if l.rate > 0 && random.Rand().Float32() > l.rate {
+			continue
+		}
+
 		link := span.Links().AppendEmpty()
-		// default to linking to previous span if exist
-		// maybe we will be able support linking to specific spans in the future
+		link.Attributes().EnsureCapacity(len(l.attributes) + len(l.randomAttributes))
+		for k, v := range l.randomAttributes {
+			_ = link.Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
+		}
+		for k, v := range l.attributes {
+			_ = link.Attributes().PutEmpty(k).FromRaw(v)
+		}
+
+		// default to linking to parent span if exist
+		// TODO: support linking to other existing spans
 		if parent != nil {
 			link.SetTraceID(traceID)
 			link.SetSpanID(parent.SpanID())
 		} else {
 			link.SetTraceID(random.TraceID())
 			link.SetSpanID(random.SpanID())
-		}
-		for k, v := range l.Attributes {
-			_ = link.Attributes().PutEmpty(k).FromRaw(v)
 		}
 	}
 
@@ -566,28 +576,6 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	// need span status to determine if an exception event should occur
 	span.generateExceptionEvents = defaults.RandomEvents.GenerateExceptionOnError
 
-	linkDefaultsRate := defaults.RandomLinks.Rate
-	var linkDefaults internalLinkTemplate
-	if linkDefaultsRate > 1 {
-		linkDefaults = internalLinkTemplate{
-			randomAttributes: defaults.RandomLinks.RandomAttributes,
-			count:            int(linkDefaultsRate),
-		}
-	} else if rand.Float32() < linkDefaultsRate {
-		linkDefaults = internalLinkTemplate{
-			randomAttributes: defaults.RandomLinks.RandomAttributes,
-			count:            1,
-		}
-	}
-
-	randomLinks := internalLinkTemplate{
-		count:            int(tmpl.RandomLinks.Rate),
-		randomAttributes: tmpl.RandomEvents.RandomAttributes,
-	}
-
-	// initialize all links but need
-	span.links = g.initializeLinks(tmpl.Links, randomLinks, linkDefaults)
-
 	// set span name
 	if tmpl.Name != nil {
 		span.name = *tmpl.Name
@@ -602,6 +590,9 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	span.kind = kind
 
 	span.randomAttributes = initializeRandomAttributes(tmpl.RandomAttributes)
+
+	// initialize links for span
+	span.links = g.initializeLinks(tmpl.Links, tmpl.RandomLinks, defaults.RandomLinks)
 
 	return &span, nil
 }
@@ -761,46 +752,41 @@ func generateRandomExceptionStackTrace() string {
 	return "panic: " + random.SelectElement(panics) + "\n" + random.SelectElement(functions)
 }
 
-func (g *TemplatedGenerator) initializeLinks(tmplLinks []Link, randomLinks internalLinkTemplate, linkDefaults internalLinkTemplate) []Link {
-	count := len(tmplLinks) + randomLinks.count + linkDefaults.count
+func (g *TemplatedGenerator) initializeLinks(linkTemplates []Link, randomLinks, defaultRandomLinks *LinkParams) []internalLinkTemplate {
+	internalLinks := make([]internalLinkTemplate, 0, len(linkTemplates))
 
-	if count == 0 {
-		return []Link{}
+	for _, lt := range linkTemplates {
+		link := internalLinkTemplate{
+			attributes:       lt.Attributes,
+			randomAttributes: initializeRandomAttributes(lt.RandomAttributes),
+		}
+		internalLinks = append(internalLinks, link)
 	}
 
-	links := make([]Link, 0, count)
-	newLink := func() *Link {
-		return &Link{
-			Attributes: make(map[string]interface{}),
+	if randomLinks == nil {
+		if defaultRandomLinks == nil {
+			return internalLinks
+		}
+		randomLinks = defaultRandomLinks
+	}
+	if randomLinks.Count == 0 { // default count is 1
+		randomLinks.Count = 1
+	}
+
+	if randomLinks.Count < 1 {
+		link := internalLinkTemplate{
+			rate:             randomLinks.Count,
+			randomAttributes: initializeRandomAttributes(randomLinks.RandomAttributes),
+		}
+		internalLinks = append(internalLinks, link)
+	} else {
+		for i := 0; i < int(randomLinks.Count); i++ {
+			link := internalLinkTemplate{
+				randomAttributes: initializeRandomAttributes(randomLinks.RandomAttributes),
+			}
+			internalLinks = append(internalLinks, link)
 		}
 	}
 
-	for _, l := range tmplLinks {
-		link := newLink()
-		for k, v := range l.Attributes {
-			link.Attributes[k] = v
-		}
-		for k, v := range initializeRandomAttributes(l.RandomAttributes) {
-			link.Attributes[k] = random.SelectElement(v)
-		}
-		links = append(links, *link)
-	}
-
-	for i := 0; i < randomLinks.count; i++ {
-		link := newLink()
-		for k, v := range initializeRandomAttributes(randomLinks.randomAttributes) {
-			link.Attributes[k] = random.SelectElement(v)
-		}
-		links = append(links, *link)
-	}
-
-	for i := 0; i < linkDefaults.count; i++ {
-		link := newLink()
-		for k, v := range initializeRandomAttributes(linkDefaults.randomAttributes) {
-			link.Attributes[k] = random.SelectElement(v)
-		}
-		links = append(links, *link)
-	}
-
-	return links
+	return internalLinks
 }
