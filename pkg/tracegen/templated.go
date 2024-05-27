@@ -121,10 +121,10 @@ type LinkParams struct {
 type EventParams struct {
 	// Generate exception event if status code of the span is >= 400
 	GenerateExceptionOnError bool `js:"generateExceptionOnError"`
-	// Rate of exception events per each span
+	// Count of exception events per each span
 	ExceptionRate float32 `js:"exceptionRate"`
-	// Rate of random events per each span
-	Rate float32 `js:"rate"`
+	// Count of random events per each span
+	Count float32 `js:"count"`
 	// Generate random attributes for this event
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
@@ -178,10 +178,9 @@ type internalLinkTemplate struct {
 }
 
 type internalEventTemplate struct {
-	count                    int
-	generateExceptionOnError bool
-	exceptionCount           int
-	randomAttributes         *AttributeParams
+	count            int
+	exceptionCount   int
+	randomAttributes *AttributeParams
 }
 
 // Traces implements Generator for TemplatedGenerator
@@ -534,15 +533,14 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
 
-	eventDefaultsRate := defaults.RandomEvents.Rate
+	eventDefaultsRate := defaults.RandomEvents.Count
 	var eventDefaults internalEventTemplate
 	// if rate is more than 1, use whole integers
 	if eventDefaultsRate > 1 {
 		eventDefaults = internalEventTemplate{
-			generateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
-			randomAttributes:         defaults.RandomEvents.RandomAttributes,
-			count:                    int(eventDefaultsRate),
-			exceptionCount:           int(defaults.RandomEvents.ExceptionRate),
+			randomAttributes: defaults.RandomEvents.RandomAttributes,
+			count:            int(eventDefaultsRate),
+			exceptionCount:   int(defaults.RandomEvents.ExceptionRate),
 		}
 	} else {
 		var count, exeptionCount int
@@ -556,18 +554,16 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 
 		// if rate is less than one
 		eventDefaults = internalEventTemplate{
-			generateExceptionOnError: defaults.RandomEvents.GenerateExceptionOnError,
-			randomAttributes:         defaults.RandomEvents.RandomAttributes,
-			count:                    count,
-			exceptionCount:           exeptionCount,
+			randomAttributes: defaults.RandomEvents.RandomAttributes,
+			count:            count,
+			exceptionCount:   exeptionCount,
 		}
 	}
 
 	randomEvents := internalEventTemplate{
-		generateExceptionOnError: tmpl.RandomEvents.GenerateExceptionOnError,
-		randomAttributes:         tmpl.RandomEvents.RandomAttributes,
-		count:                    int(tmpl.RandomEvents.Rate),
-		exceptionCount:           int(tmpl.RandomEvents.ExceptionRate),
+		randomAttributes: tmpl.RandomEvents.RandomAttributes,
+		count:            int(tmpl.RandomEvents.Count),
+		exceptionCount:   int(tmpl.RandomEvents.ExceptionRate),
 	}
 
 	// generate all non-exception events
