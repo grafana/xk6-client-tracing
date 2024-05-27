@@ -3,7 +3,7 @@ import tracing from 'k6/x/tracing';
 import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 export const options = {
-    vus: 4,
+    vus: 1,
     duration: "20m",
 };
 
@@ -24,7 +24,7 @@ const traceDefaults = {
     attributeSemantics: tracing.SEMANTICS_HTTP,
     attributes: {"one": "three"},
     randomAttributes: {count: 2, cardinality: 5},
-    randomEvents: {generateExceptionOnError: true, rate: 1.0, randomAttributes: {count: 2, cardinality: 3}},
+    randomEvents: {count: 0.1, exceptionCount: 0.2, randomAttributes: {count: 6, cardinality: 20}},
 }
 
 const traceTemplates = [
@@ -35,7 +35,11 @@ const traceTemplates = [
             {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}},
             {service: "auth-service", name: "authenticate"},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
-            {service: "article-service", name: "list-articles", links: [{attributes: {"link-type": "parent-child"}, randomAttributes: {count: 2, cardinality: 5}}]},
+            {
+                service: "article-service",
+                name: "list-articles",
+                links: [{attributes: {"link-type": "parent-child"}, randomAttributes: {count: 2, cardinality: 5}}]
+            },
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
             {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
         ]
@@ -64,7 +68,12 @@ const traceTemplates = [
         spans: [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
-            {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}, randomEvents: {count: 0.5, exceptionCount: 2, randomAttributes: {count: 5, cardinality: 5}}},
+            {
+                service: "auth-service",
+                name: "authenticate",
+                attributes: {"http.status_code": 403},
+                randomEvents: {count: 0.5, exceptionCount: 2, randomAttributes: {count: 5, cardinality: 5}}
+            },
         ]
     },
     {
@@ -73,8 +82,16 @@ const traceTemplates = [
             {service: "shop-backend"},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {service: "auth-service", name: "authenticate"},
-            {service: "cart-service", name: "checkout", randomEvents: {count: 0.5, exceptionCount: 2, exceptionOnError: true, randomAttributes: {count: 5, cardinality: 5}}},
-            {service: "billing-service", name: "payment", randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}}, randomEvents: {exceptionOnError: true, randomAttributes: {count: 4}}}
+            {
+                service: "cart-service",
+                name: "checkout",
+                randomEvents: {count: 0.5, exceptionCount: 2, exceptionOnError: true, randomAttributes: {count: 5, cardinality: 5}}
+            },
+            {
+                service: "billing-service",
+                name: "payment",
+                randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}},
+                randomEvents: {exceptionOnError: true, randomAttributes: {count: 4}}}
         ]
     },
 ]
