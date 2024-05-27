@@ -44,6 +44,7 @@ const traceTemplates = [
         defaults: {
             attributes: {"numbers": ["one", "two", "three"]},
             attributeSemantics: tracing.SEMANTICS_HTTP,
+            randomEvents: {count: 2, randomAttributes: {count: 3, cardinality: 10}},
         },
         spans: [
             {service: "shop-backend", name: "article-to-cart", duration: {min: 400, max: 1200}},
@@ -63,17 +64,17 @@ const traceTemplates = [
         spans: [
             {service: "shop-backend", attributes: {"http.status_code": 403}},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
-            {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
+            {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}, randomEvents: {count: 0.5, exceptionCount: 2, randomAttributes: {count: 5, cardinality: 5}}},
         ]
     },
     {
         defaults: traceDefaults,
         spans: [
-            {service: "shop-backend", attributes: {"http.status_code": 403}},
+            {service: "shop-backend"},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
-            {service: "auth-service", name: "authenticate", attributes: {"http.status_code": 403}},
-            {service: "cart-service", name: "checkout", randomEvents: {exceptionRate: 1, rate: 2, randomAttributes: {count: 5, cardinality: 2}}},
-            {service: "billing-service", name: "payment", randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}}}
+            {service: "auth-service", name: "authenticate"},
+            {service: "cart-service", name: "checkout", randomEvents: {count: 0.5, exceptionCount: 2, exceptionOnError: true, randomAttributes: {count: 5, cardinality: 5}}},
+            {service: "billing-service", name: "payment", randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}}, randomEvents: {exceptionOnError: true, randomAttributes: {count: 4}}}
         ]
     },
 ]

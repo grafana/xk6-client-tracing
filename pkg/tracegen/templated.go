@@ -2,7 +2,6 @@ package tracegen
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,7 +51,7 @@ type SpanDefaults struct {
 	// RandomAttributes random attributes generated for each span.
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 	// Random events generated for each span
-	RandomEvents EventParams `js:"randomEvents"`
+	RandomEvents *EventParams `js:"randomEvents"`
 	// Random links generated for each span
 	RandomLinks *LinkParams `js:"randomLinks"`
 }
@@ -82,7 +81,7 @@ type SpanTemplate struct {
 	// List of links for the span with specific parameters
 	Links []Link `js:"links"`
 	// Generate random events for the span
-	RandomEvents EventParams `js:"randomEvents"`
+	RandomEvents *EventParams `js:"randomEvents"`
 	// Generate random links for the span
 	RandomLinks *LinkParams `js:"randomLinks"`
 }
@@ -119,12 +118,12 @@ type LinkParams struct {
 }
 
 type EventParams struct {
-	// Generate exception event if status code of the span is >= 400
-	GenerateExceptionOnError bool `js:"generateExceptionOnError"`
-	// Count of exception events per each span
-	ExceptionRate float32 `js:"exceptionRate"`
 	// Count of random events per each span
 	Count float32 `js:"count"`
+	// ExceptionCount indicates how many exception events to add to the span
+	ExceptionCount float32 `js:"exceptionCount"`
+	// ExceptionOnError generates exceptions if status code of the span is >= 400
+	ExceptionOnError bool `js:"exceptionOnError"`
 	// Generate random attributes for this event
 	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
@@ -149,18 +148,17 @@ type TemplatedGenerator struct {
 }
 
 type internalSpanTemplate struct {
-	idx                     int
-	resource                *internalResourceTemplate
-	parent                  *internalSpanTemplate
-	name                    string
-	kind                    ptrace.SpanKind
-	duration                *Range
-	attributeSemantics      *OTelSemantics
-	attributes              map[string]interface{}
-	randomAttributes        map[string][]interface{}
-	events                  []Event
-	links                   []internalLinkTemplate
-	generateExceptionEvents bool
+	idx                int
+	resource           *internalResourceTemplate
+	parent             *internalSpanTemplate
+	name               string
+	kind               ptrace.SpanKind
+	duration           *Range
+	attributeSemantics *OTelSemantics
+	attributes         map[string]interface{}
+	randomAttributes   map[string][]interface{}
+	events             []internalEventTemplate
+	links              []internalLinkTemplate
 }
 
 type internalResourceTemplate struct {
@@ -178,9 +176,11 @@ type internalLinkTemplate struct {
 }
 
 type internalEventTemplate struct {
-	count            int
-	exceptionCount   int
-	randomAttributes *AttributeParams
+	rate             float32
+	exceptionOnError bool
+	name             string
+	attributes       map[string]interface{}
+	randomAttributes map[string][]interface{}
 }
 
 // Traces implements Generator for TemplatedGenerator
@@ -288,40 +288,35 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 		}
 	}
 
-	// events
+	// generate events
+	var hasError bool
+	if st, found := span.Attributes().Get("http.status_code"); found {
+		hasError = st.Int() >= 400
+	} else if st, found = span.Attributes().Get("http.response.status_code"); found {
+		hasError = st.Int() >= 400
+	}
 
 	span.Events().EnsureCapacity(len(tmpl.events))
 	for _, e := range tmpl.events {
+		if e.rate > 0 && random.Rand().Float32() > e.rate {
+			continue
+		}
+		if e.exceptionOnError && !hasError {
+			continue
+		}
+
 		event := span.Events().AppendEmpty()
-		event.SetName(e.Name)
-		event.SetTimestamp(pcommon.NewTimestampFromTime(end))
-		for k, v := range e.Attributes {
+		event.Attributes().EnsureCapacity(len(e.attributes) + len(e.randomAttributes))
+
+		event.SetName(e.name)
+		eventTime := start.Add(random.Duration(0, duration))
+		event.SetTimestamp(pcommon.NewTimestampFromTime(eventTime))
+
+		for k, v := range e.attributes {
 			_ = event.Attributes().PutEmpty(k).FromRaw(v)
 		}
-	}
-
-	if tmpl.generateExceptionEvents {
-		var status int64
-		parentAttr := pcommon.NewMap()
-		if parent != nil {
-			parentAttr = parent.Attributes()
-		}
-		if st, found := span.Attributes().Get("http.status_code"); found {
-			status = st.Int()
-		} else if st, found = parentAttr.Get("http.status_code"); found {
-			status = st.Int()
-		} else {
-			status = random.HTTPStatusSuccess()
-			span.Attributes().PutInt("http.status_code", status)
-		}
-		if status >= 400 {
-			exceptionEvent := generateExceptionEvent()
-			event := span.Events().AppendEmpty()
-			event.SetName(exceptionEvent.Name)
-			event.SetTimestamp(pcommon.NewTimestampFromTime(end))
-			for k, v := range exceptionEvent.Attributes {
-				_ = event.Attributes().PutEmpty(k).FromRaw(v)
-			}
+		for k, v := range e.randomAttributes {
+			_ = event.Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
 		}
 	}
 
@@ -533,45 +528,6 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
 
-	eventDefaultsRate := defaults.RandomEvents.Count
-	var eventDefaults internalEventTemplate
-	// if rate is more than 1, use whole integers
-	if eventDefaultsRate > 1 {
-		eventDefaults = internalEventTemplate{
-			randomAttributes: defaults.RandomEvents.RandomAttributes,
-			count:            int(eventDefaultsRate),
-			exceptionCount:   int(defaults.RandomEvents.ExceptionRate),
-		}
-	} else {
-		var count, exeptionCount int
-		if rand.Float32() < eventDefaultsRate {
-			count = 1
-		}
-
-		if rand.Float32() < eventDefaultsRate {
-			exeptionCount = 1
-		}
-
-		// if rate is less than one
-		eventDefaults = internalEventTemplate{
-			randomAttributes: defaults.RandomEvents.RandomAttributes,
-			count:            count,
-			exceptionCount:   exeptionCount,
-		}
-	}
-
-	randomEvents := internalEventTemplate{
-		randomAttributes: tmpl.RandomEvents.RandomAttributes,
-		count:            int(tmpl.RandomEvents.Count),
-		exceptionCount:   int(tmpl.RandomEvents.ExceptionRate),
-	}
-
-	// generate all non-exception events
-	span.events = g.initializeEvents(tmpl.Events, randomEvents, eventDefaults)
-
-	// need span status to determine if an exception event should occur
-	span.generateExceptionEvents = defaults.RandomEvents.GenerateExceptionOnError
-
 	// set span name
 	if tmpl.Name != nil {
 		span.name = *tmpl.Name
@@ -589,6 +545,9 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 
 	// initialize links for span
 	span.links = g.initializeLinks(tmpl.Links, tmpl.RandomLinks, defaults.RandomLinks)
+
+	// initialize events for the span
+	span.events = g.initializeEvents(tmpl.Events, tmpl.RandomEvents, defaults.RandomEvents)
 
 	return &span, nil
 }
@@ -670,36 +629,75 @@ func initializeRandomAttributes(attributeParams *AttributeParams) map[string][]i
 	return attributes
 }
 
-func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents internalEventTemplate, eventDefaults internalEventTemplate) []Event {
-	count := len(tmplEvents) + randomEvents.count + eventDefaults.count
-
-	if count == 0 {
-		return []Event{}
-	}
-
-	events := make([]Event, 0, count)
-
+func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, defaultRandomEvents *EventParams) []internalEventTemplate {
+	internalEvents := make([]internalEventTemplate, 0, len(tmplEvents))
 	for _, e := range tmplEvents {
-		event := generateEvent(e.Name, e.Attributes, e.RandomAttributes)
-		events = append(events, event)
+		event := internalEventTemplate{
+			name:             e.Name,
+			attributes:       e.Attributes,
+			randomAttributes: initializeRandomAttributes(e.RandomAttributes),
+		}
+		internalEvents = append(internalEvents, event)
 	}
 
-	for i := 0; i < randomEvents.exceptionCount; i++ {
-		event := generateExceptionEvent()
-		events = append(events, event)
+	if randomEvents == nil {
+		if defaultRandomEvents == nil {
+			return internalEvents
+		}
+		randomEvents = defaultRandomEvents
 	}
 
-	for i := 0; i < randomEvents.count; i++ {
-		event := generateEvent("", nil, randomEvents.randomAttributes)
-		events = append(events, event)
+	// normal random events
+	if randomEvents.Count == 0 { // default count is 1
+		randomEvents.Count = 1
+	}
+	if randomEvents.Count < 1 {
+		event := internalEventTemplate{
+			rate:             randomEvents.Count,
+			name:             "event_" + random.K6String(10),
+			randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
+		}
+		internalEvents = append(internalEvents, event)
+	} else {
+		for i := 0; i < int(randomEvents.Count); i++ {
+			event := internalEventTemplate{
+				name:             "event_" + random.K6String(10),
+				randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
+			}
+			internalEvents = append(internalEvents, event)
+		}
 	}
 
-	for i := 0; i < eventDefaults.count; i++ {
-		event := generateEvent("", nil, eventDefaults.randomAttributes)
-		events = append(events, event)
+	// random exception events
+	if randomEvents.ExceptionCount == 0 && randomEvents.ExceptionOnError {
+		randomEvents.ExceptionCount = 1 // default exception count is 1, if ExceptionOnError is true
+	}
+	if randomEvents.ExceptionCount < 1 {
+		event := internalEventTemplate{
+			rate:             randomEvents.Count,
+			name:             "event_" + random.K6String(10),
+			randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
+			exceptionOnError: randomEvents.ExceptionOnError,
+		}
+		internalEvents = append(internalEvents, event)
+	} else {
+		for i := 0; i < int(randomEvents.ExceptionCount); i++ {
+			event := internalEventTemplate{
+				name: "exception",
+				attributes: map[string]interface{}{
+					"exception.escape":     false,
+					"exception.message":    generateRandomExceptionMsg(),
+					"exception.stacktrace": generateRandomExceptionStackTrace(),
+					"exception.type":       random.K6String(10) + ".error",
+				},
+				randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
+				exceptionOnError: randomEvents.ExceptionOnError,
+			}
+			internalEvents = append(internalEvents, event)
+		}
 	}
 
-	return events
+	return internalEvents
 }
 
 func generateExceptionEvent() Event {
