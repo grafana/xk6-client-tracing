@@ -674,8 +674,14 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 	}
 	if randomEvents.ExceptionCount < 1 {
 		event := internalEventTemplate{
-			rate:             randomEvents.Count,
-			name:             random.EventName(),
+			rate: randomEvents.ExceptionCount,
+			name: "exception",
+			attributes: map[string]interface{}{
+				"exception.escape":     false,
+				"exception.message":    generateRandomExceptionMsg(),
+				"exception.stacktrace": generateRandomExceptionStackTrace(),
+				"exception.type":       "error.type_" + random.K6String(10),
+			},
 			randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
 			exceptionOnError: randomEvents.ExceptionOnError,
 		}
