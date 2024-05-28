@@ -654,14 +654,14 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 	if randomEvents.Count < 1 {
 		event := internalEventTemplate{
 			rate:             randomEvents.Count,
-			name:             "event_" + random.K6String(10),
+			name:             random.EventName(),
 			randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
 		}
 		internalEvents = append(internalEvents, event)
 	} else {
 		for i := 0; i < int(randomEvents.Count); i++ {
 			event := internalEventTemplate{
-				name:             "event_" + random.K6String(10),
+				name:             random.EventName(),
 				randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
 			}
 			internalEvents = append(internalEvents, event)
@@ -675,7 +675,7 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 	if randomEvents.ExceptionCount < 1 {
 		event := internalEventTemplate{
 			rate:             randomEvents.Count,
-			name:             "event_" + random.K6String(10),
+			name:             random.EventName(),
 			randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
 			exceptionOnError: randomEvents.ExceptionOnError,
 		}
@@ -688,7 +688,7 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 					"exception.escape":     false,
 					"exception.message":    generateRandomExceptionMsg(),
 					"exception.stacktrace": generateRandomExceptionStackTrace(),
-					"exception.type":       random.K6String(10) + ".error",
+					"exception.type":       "error.type_" + random.K6String(10),
 				},
 				randomAttributes: initializeRandomAttributes(randomEvents.RandomAttributes),
 				exceptionOnError: randomEvents.ExceptionOnError,

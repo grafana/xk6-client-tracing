@@ -125,3 +125,7 @@ func SpanID() pcommon.SpanID {
 	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
 }
+
+func EventName() string {
+	return "event_k6." + String(10)
+}
