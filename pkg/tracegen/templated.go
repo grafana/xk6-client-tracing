@@ -700,39 +700,6 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 	return internalEvents
 }
 
-func generateExceptionEvent() Event {
-	return Event{
-		Name: "exception",
-		Attributes: map[string]interface{}{
-			"exception.escape":     false,
-			"exception.message":    generateRandomExceptionMsg(),
-			"exception.stacktrace": generateRandomExceptionStackTrace(),
-			"exception.type":       random.K6String(10) + ".error",
-		},
-	}
-}
-
-func generateEvent(name string, attributes map[string]interface{}, randomAttr *AttributeParams) Event {
-	event := Event{
-		Attributes: make(map[string]interface{}),
-	}
-
-	if name != "" {
-		event.Name = name
-	} else {
-		event.Name = "event " + random.K6String(10)
-	}
-
-	for k, v := range attributes {
-		event.Attributes[k] = v
-	}
-
-	for k, v := range initializeRandomAttributes(randomAttr) {
-		event.Attributes[k] = random.SelectElement(v)
-	}
-	return event
-}
-
 func generateRandomExceptionMsg() string {
 	return "error: " + random.K6String(20)
 }
