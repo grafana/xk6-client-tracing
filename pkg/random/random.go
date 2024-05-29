@@ -32,6 +32,10 @@ func init() {
 	rnd = rand.New(rand.NewSource(seed.Int64()))
 }
 
+func Rand() *rand.Rand {
+	return rnd
+}
+
 func SelectElement[T any](elements []T) T {
 	return elements[rnd.Intn(len(elements))]
 }
@@ -120,4 +124,8 @@ func SpanID() pcommon.SpanID {
 	var b [8]byte
 	_, _ = rnd.Read(b[:]) // always returns nil error
 	return b
+}
+
+func EventName() string {
+	return "event_k6." + String(10)
 }
