@@ -1,4 +1,4 @@
-package xk6_client_tracing
+package clienttracing
 
 import (
 	"context"
