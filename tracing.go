@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
 	"github.com/pkg/errors"
 	"go.k6.io/k6/js/common"
@@ -55,16 +55,16 @@ type RootModule struct {
 func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	return &TracingModule{
 		vu:                  vu,
-		paramGenerators:     make(map[*goja.Object]*tracegen.ParameterizedGenerator),
-		templatedGenerators: make(map[*goja.Object]*tracegen.TemplatedGenerator),
+		paramGenerators:     make(map[*sobek.Object]*tracegen.ParameterizedGenerator),
+		templatedGenerators: make(map[*sobek.Object]*tracegen.TemplatedGenerator),
 	}
 }
 
 type TracingModule struct {
 	vu                  modules.VU
 	client              *Client
-	paramGenerators     map[*goja.Object]*tracegen.ParameterizedGenerator
-	templatedGenerators map[*goja.Object]*tracegen.TemplatedGenerator
+	paramGenerators     map[*sobek.Object]*tracegen.ParameterizedGenerator
+	templatedGenerators map[*sobek.Object]*tracegen.TemplatedGenerator
 }
 
 func (ct *TracingModule) Exports() modules.Exports {
@@ -84,7 +84,7 @@ func (ct *TracingModule) Exports() modules.Exports {
 	}
 }
 
-func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newClient(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	var cfg ClientConfig
 	err := rt.ExportTo(g.Argument(0), &cfg)
 	if err != nil {
@@ -101,7 +101,7 @@ func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *go
 	return rt.ToValue(ct.client).ToObject(rt)
 }
 
-func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newParameterizedGenerator(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	paramVal := g.Argument(0)
 	paramObj := paramVal.ToObject(rt)
 
@@ -120,7 +120,7 @@ func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *g
 	return rt.ToValue(generator).ToObject(rt)
 }
 
-func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newTemplatedGenerator(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	tmplVal := g.Argument(0)
 	tmplObj := tmplVal.ToObject(rt)
 

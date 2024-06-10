@@ -22,7 +22,8 @@ var (
 	dbNames             = []string{"redis", "mysql", "postgres", "memcached", "mongodb", "elasticsearch"}
 	resources           = []string{
 		"order", "payment", "customer", "product", "stock", "inventory",
-		"shipping", "billing", "checkout", "cart", "search", "analytics"}
+		"shipping", "billing", "checkout", "cart", "search", "analytics",
+	}
 
 	rnd *rand.Rand
 )
