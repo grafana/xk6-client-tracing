@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 	"unsafe"
 
@@ -71,7 +72,8 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		ilss := rspan.ScopeSpans()
 		ilss.EnsureCapacity(1)
 		ils := ilss.AppendEmpty()
-		ils.Scope().SetName("k6")
+		ils.Scope().SetName("k6-scope-name/" + random.String(15))
+		ils.Scope().SetVersion("k6-scope-version:v" + strconv.Itoa(random.IntBetween(0, 99)) + "." + strconv.Itoa(random.IntBetween(0, 99)))
 
 		if te.ID == "" {
 			te.ID = random.TraceID().String()
