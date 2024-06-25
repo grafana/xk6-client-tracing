@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -233,7 +234,8 @@ func (g *TemplatedGenerator) generateResourceSpans(resSpanSlice ptrace.ResourceS
 	resSpans.Resource().Attributes().PutStr("service.name", tmpl.service)
 
 	scopeSpans := resSpans.ScopeSpans().AppendEmpty()
-	scopeSpans.Scope().SetName("k6")
+	scopeSpans.Scope().SetName("k6-scope-name/" + random.String(15))
+	scopeSpans.Scope().SetVersion("k6-scope-version:v" + strconv.Itoa(random.IntBetween(0, 99)) + "." + strconv.Itoa(random.IntBetween(0, 99)))
 	return resSpans
 }
 
