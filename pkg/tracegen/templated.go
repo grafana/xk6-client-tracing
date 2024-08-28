@@ -107,6 +107,8 @@ type Link struct {
 type Event struct {
 	// Name of event
 	Name string `js:"name"`
+	// PercentageOfSpan if set controls where in the span the event is generated. If missing, the event is generated randomly
+	PercentageOfSpan float32 `js:"percentageOfSpan"`
 	// Attributes for this event
 	Attributes map[string]interface{} `js:"attributes"`
 	// Generate random attributes for this event
@@ -181,6 +183,7 @@ type internalLinkTemplate struct {
 
 type internalEventTemplate struct {
 	rate             float32
+	percentageOfSpan float32
 	exceptionOnError bool
 	name             string
 	attributes       map[string]interface{}
@@ -314,7 +317,13 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 		event.Attributes().EnsureCapacity(len(e.attributes) + len(e.randomAttributes))
 
 		event.SetName(e.name)
-		eventTime := start.Add(random.Duration(0, duration))
+
+		var eventTime time.Time
+		if e.percentageOfSpan > 0 {
+			eventTime = start.Add(time.Duration(float64(duration) * float64(e.percentageOfSpan)))
+		} else {
+			eventTime = start.Add(random.Duration(0, duration))
+		}
 		event.SetTimestamp(pcommon.NewTimestampFromTime(eventTime))
 
 		for k, v := range e.attributes {
@@ -658,6 +667,7 @@ func (g *TemplatedGenerator) initializeEvents(tmplEvents []Event, randomEvents, 
 		event := internalEventTemplate{
 			name:             e.Name,
 			attributes:       e.Attributes,
+			percentageOfSpan: e.PercentageOfSpan,
 			randomAttributes: initializeRandomAttributes(e.RandomAttributes),
 		}
 		internalEvents = append(internalEvents, event)
