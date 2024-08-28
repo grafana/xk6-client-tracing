@@ -63,6 +63,8 @@ type SpanTemplate struct {
 	Service string `js:"service"`
 	// Name represents the name of the span. If empty, the name will be randomly generated.
 	Name *string `js:"name"`
+	// Status string sets the span status. "error", "ok" or "unset" are supported
+	Status *string `js:"status"`
 	// ParentIDX defines the index of the parent span in TraceTemplate.Spans. ParentIDX must be smaller than the
 	// own index. If empty, the parent is the span with the position directly before this span in TraceTemplate.Spans.
 	ParentIDX *int `js:"parentIdx"`
@@ -154,6 +156,7 @@ type internalSpanTemplate struct {
 	parent             *internalSpanTemplate
 	name               string
 	kind               ptrace.SpanKind
+	status             *ptrace.StatusCode
 	duration           *Range
 	attributeSemantics *OTelSemantics
 	attributes         map[string]interface{}
@@ -320,6 +323,10 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 		for k, v := range e.randomAttributes {
 			_ = event.Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
 		}
+	}
+
+	if tmpl.status != nil {
+		span.Status().SetCode(*tmpl.status)
 	}
 
 	// generate links
@@ -529,6 +536,20 @@ func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplat
 		span.attributeSemantics = defaults.AttributeSemantics
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
+
+	// set status
+	if tmpl.Status != nil {
+		var status ptrace.StatusCode
+		switch *tmpl.Status {
+		case "error":
+			status = ptrace.StatusCodeError
+		case "ok":
+			status = ptrace.StatusCodeOk
+		case "unset":
+			status = ptrace.StatusCodeUnset
+		}
+		span.status = &status
+	}
 
 	// set span name
 	if tmpl.Name != nil {
