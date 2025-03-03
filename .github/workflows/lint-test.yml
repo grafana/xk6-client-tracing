@@ -16,9 +16,9 @@ jobs:
           cache: true
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6.5.0
         with:
-          version: v1.59.0
+          version: v1.64.6
           args: --config ./golangci.yml
 
       - name: Test
