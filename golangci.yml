@@ -26,4 +26,5 @@ linter-settings:
 issues:
   exclude:
     - "var-naming: don't use an underscore in package name"
-    - "redefines-builtin-id: redefinition of the built-in function max (revive)"
+    - "redefines-builtin-id: redefinition of the built-in function max"
+    - "redefines-builtin-id: redefinition of the built-in function min"
