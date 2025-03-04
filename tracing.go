@@ -215,7 +215,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		context.Background(),
 		exporter.Settings{
 			TelemetrySettings: component.TelemetrySettings{
-				Logger:         zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{}), zapcore.AddSync(os.Stdout), zap.DebugLevel)),
+				Logger:         zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{}), zapcore.AddSync(os.Stdout), zap.InfoLevel)),
 				TracerProvider: tracenoop.NewTracerProvider(),
 				MeterProvider:  metricnoop.NewMeterProvider(),
 			},
