@@ -195,10 +195,10 @@ func (g *TemplatedGenerator) Traces() ptrace.Traces {
 	)
 
 	if traceID.IsEmpty() {
-		traceID = random.TraceID()
+		traceID = pcommon.TraceID([16]byte{1, 1})
 	}
 	if traceID.IsEmpty() {
-		panic("traceID generation was empty")
+		panic("traceID was empty even after static set")
 	}
 
 	randomTraceAttributes := make(map[string]interface{}, len(g.randomAttributes))
