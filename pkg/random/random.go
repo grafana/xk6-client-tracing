@@ -116,7 +116,10 @@ func OperationForResource(resource string) string {
 
 func TraceID() pcommon.TraceID {
 	var b [16]byte
-	_, _ = rnd.Read(b[:]) // always returns nil error
+	_, err := rnd.Read(b[:])
+	if err != nil {
+		fmt.Println("Error reading random bytes:", err)
+	}
 	return b
 }
 
