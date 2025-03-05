@@ -194,6 +194,10 @@ func (g *TemplatedGenerator) Traces() ptrace.Traces {
 		spans        []ptrace.Span
 	)
 
+	if traceID.IsEmpty() {
+		panic("traceID generation was empty")
+	}
+
 	randomTraceAttributes := make(map[string]interface{}, len(g.randomAttributes))
 	for k, v := range g.randomAttributes {
 		randomTraceAttributes[k] = random.SelectElement(v)
