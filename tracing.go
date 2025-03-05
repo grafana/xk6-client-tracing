@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -206,6 +207,9 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
+		}
+		exporterCfg.(*otlphttpexporter.Config).QueueConfig = exporterhelper.QueueConfig{
+			Enabled: false,
 		}
 	default:
 		return nil, errors.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
