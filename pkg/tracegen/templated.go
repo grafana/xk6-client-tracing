@@ -195,6 +195,9 @@ func (g *TemplatedGenerator) Traces() ptrace.Traces {
 	)
 
 	if traceID.IsEmpty() {
+		traceID = random.TraceID()
+	}
+	if traceID.IsEmpty() {
 		panic("traceID generation was empty")
 	}
 
