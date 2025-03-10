@@ -300,7 +300,7 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 
 	span.Events().EnsureCapacity(len(tmpl.events))
 	for _, e := range tmpl.events {
-		if e.rate > 0 && random.Rand().Float32() > e.rate {
+		if e.rate > 0 && random.Float32() > e.rate {
 			continue
 		}
 		if e.exceptionOnError && !hasError {
@@ -325,7 +325,7 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 	// generate links
 	span.Links().EnsureCapacity(len(tmpl.links))
 	for _, l := range tmpl.links {
-		if l.rate > 0 && random.Rand().Float32() > l.rate {
+		if l.rate > 0 && random.Float32() > l.rate {
 			continue
 		}
 
