@@ -20,6 +20,7 @@ const (
 
 type TraceParams struct {
 	ID                string     `json:"id"`
+	ParentID          string     `json:"parent_id"`
 	RandomServiceName bool       `json:"random_service_name"`
 	Spans             SpanParams `json:"spans"`
 }
@@ -83,7 +84,13 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		sps := ils.Spans()
 		sps.EnsureCapacity(te.Spans.Count)
 		for e := 0; e < te.Spans.Count; e++ {
-			g.generateSpan(te, sps.AppendEmpty())
+			if e == 0 {
+				g.generateSpan(te, sps.AppendEmpty())
+				idxSpan := sps.At(0)
+				te.ParentID = idxSpan.SpanID().String()
+			} else {
+				g.generateSpan(te, sps.AppendEmpty())
+			}
 		}
 	}
 
@@ -105,8 +112,13 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 
 	span := ptrace.NewSpan()
 	span.SetTraceID(traceID)
+	if t.ParentID != "" {
+		var parentID pcommon.SpanID
+		p, _ := hex.DecodeString(t.ParentID)
+		copy(parentID[:], p)
+		span.SetParentSpanID(parentID)
+	}
 	span.SetSpanID(random.SpanID())
-	span.SetParentSpanID(random.SpanID())
 	span.SetName(spanName)
 	span.SetKind(ptrace.SpanKindClient)
 	span.SetStartTimestamp(pcommon.NewTimestampFromTime(startTime))
