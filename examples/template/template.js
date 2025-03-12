@@ -25,6 +25,7 @@ const traceDefaults = {
     attributes: {"one": "three"},
     randomAttributes: {count: 2, cardinality: 5},
     randomEvents: {count: 0.1, exceptionCount: 0.2, randomAttributes: {count: 6, cardinality: 20}},
+    resource: { randomAttributes: {count: 3} },
 }
 
 const traceTemplates = [
@@ -32,8 +33,8 @@ const traceTemplates = [
         defaults: traceDefaults,
         spans: [
             {service: "shop-backend", name: "list-articles", duration: {min: 200, max: 900}, resource: { attributes: {"namespace": "shop"} }},
-            {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}, resource: { randomAttributes: {count: 2} }},
-            {service: "auth-service", name: "authenticate", resource: { randomAttributes: {count: 3}, attributes: {"namespace": "auth"} }},
+            {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}, resource: { randomAttributes: {count: 4} }},
+            {service: "auth-service", name: "authenticate", resource: { randomAttributes: {count: 2}, attributes: {"namespace": "auth"} }},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
             {
                 service: "article-service",

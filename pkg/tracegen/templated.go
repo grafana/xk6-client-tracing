@@ -55,6 +55,8 @@ type SpanDefaults struct {
 	RandomEvents *EventParams `js:"randomEvents"`
 	// Random links generated for each span
 	RandomLinks *LinkParams `js:"randomLinks"`
+	// Resource controls the default attributes for all resources.
+	Resource *ResourceTemplate `js:"resource"`
 }
 
 // SpanTemplate parameters that define how a span is created.
@@ -487,7 +489,7 @@ func (g *TemplatedGenerator) initialize(template *TraceTemplate) error {
 		// get or generate the corresponding ResourceSpans
 		res, found := g.resources[tmpl.Service]
 		if !found {
-			res = g.initializeResource(&tmpl)
+			res = g.initializeResource(&tmpl, &template.Defaults)
 			g.resources[tmpl.Service] = res
 		} else {
 			g.amendInitializedResource(res, &tmpl)
@@ -527,13 +529,18 @@ func (g *TemplatedGenerator) initialize(template *TraceTemplate) error {
 	return nil
 }
 
-func (g *TemplatedGenerator) initializeResource(tmpl *SpanTemplate) *internalResourceTemplate {
+func (g *TemplatedGenerator) initializeResource(tmpl *SpanTemplate, defaults *SpanDefaults) *internalResourceTemplate {
 	res := internalResourceTemplate{
 		service:   tmpl.Service,
 		hostName:  fmt.Sprintf("%s.local", tmpl.Service),
 		hostIP:    random.IPAddr(),
 		hostPort:  random.Port(),
 		transport: "ip_tcp",
+	}
+
+	// use defaults if no resource attributes are set
+	if tmpl.Resource == nil {
+		tmpl.Resource = defaults.Resource
 	}
 
 	if tmpl.Resource != nil {
