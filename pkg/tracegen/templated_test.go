@@ -33,11 +33,9 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 		assert.NoError(t, err)
 
 		for _ = range testRounds {
-			traces := gen.Traces()
-			spans := collectSpansFromTrace(traces)
-
-			assert.Len(t, spans, len(template.Spans))
-			for i, span := range spans {
+			count := 0
+			for i, span := range iterSpans(gen.Traces()) {
+				count++
 				requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "k6.")
 				if template.Spans[i].Name != nil {
 					assert.Equal(t, *template.Spans[i].Name, span.Name())
@@ -49,6 +47,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 					}
 				}
 			}
+			assert.Equal(t, len(template.Spans), count, "unexpected number of spans")
 		}
 	}
 }
@@ -121,12 +120,10 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
-		for i := 0; i < testRounds; i++ {
-			traces := gen.Traces()
-			spans := collectSpansFromTrace(traces)
-
-			assert.Len(t, spans, len(template.Spans))
-			for _, span := range spans {
+		for _ = range testRounds {
+			count := 0
+			for _, span := range iterSpans(gen.Traces()) {
+				count++
 				events := span.Events()
 				links := span.Links()
 				checkEventsLinksLength := func(expectedTemplate, expectedRandom int, spanName string) {
@@ -189,28 +186,25 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 					assert.True(t, found, "exception event not found")
 				}
 			}
+			assert.Equal(t, len(template.Spans), count, "unexpected number of spans")
 		}
 	}
 }
 
-type iterElem struct {
-	Resource pcommon.Resource
-	Span     ptrace.Span
-}
-
-func iterateTraces(traces ptrace.Traces) func(func(e iterElem) bool) {
-	return func(f func(e iterElem) bool) {
-		var elem iterElem
+func iterSpans(traces ptrace.Traces) func(func(i int, e ptrace.Span) bool) {
+	count := 0
+	return func(f func(i int, e ptrace.Span) bool) {
+		var elem ptrace.Span
 		for i := 0; i < traces.ResourceSpans().Len(); i++ {
 			rs := traces.ResourceSpans().At(i)
 			for j := 0; j < rs.ScopeSpans().Len(); j++ {
 				ss := rs.ScopeSpans().At(j)
 				for k := 0; k < ss.Spans().Len(); k++ {
-					elem.Span = ss.Spans().At(k)
-					elem.Resource = rs.Resource()
-					if !f(elem) {
+					elem = ss.Spans().At(k)
+					if !f(count, elem) {
 						return
 					}
+					count++
 				}
 			}
 		}
@@ -230,10 +224,10 @@ func iterResources(traces ptrace.Traces) func(func(i int, e pcommon.Resource) bo
 	}
 }
 
-func requireAttributeCountGreaterOrEqual(t *testing.T, attributes pcommon.Map, expected int, prefixes ...string) {
+func requireAttributeCountGreaterOrEqual(t *testing.T, attributes pcommon.Map, compare int, prefixes ...string) {
 	t.Helper()
 	count := countAttributes(attributes, prefixes...)
-	require.GreaterOrEqual(t, expected, count, "expected at least %d attributes, got %d", expected, count)
+	require.GreaterOrEqual(t, count, compare, "expected at least %d attributes, got %d", compare, count)
 }
 
 func requireAttributeCountEqual(t *testing.T, attributes pcommon.Map, expected int, prefixes ...string) {
@@ -247,12 +241,6 @@ func requireAttributeEqual(t *testing.T, attributes pcommon.Map, key string, exp
 	val, found := attributes.Get(key)
 	require.True(t, found, "attribute %s not found", key)
 	require.Equal(t, expected, val.AsRaw(), "value %v expected for attribute %s but was %v", expected, key, val.AsRaw())
-}
-
-func requireAttributeExists(t *testing.T, attributes pcommon.Map, key string) {
-	t.Helper()
-	_, found := attributes.Get(key)
-	require.True(t, found, "attribute %s not found", key)
 }
 
 func countAttributes(attributes pcommon.Map, prefixes ...string) int {
@@ -271,20 +259,6 @@ func countAttributes(attributes pcommon.Map, prefixes ...string) int {
 		return true
 	})
 	return count
-}
-
-func collectSpansFromTrace(traces ptrace.Traces) []ptrace.Span {
-	var spans []ptrace.Span
-	for i := 0; i < traces.ResourceSpans().Len(); i++ {
-		rs := traces.ResourceSpans().At(i)
-		for j := 0; j < rs.ScopeSpans().Len(); j++ {
-			ss := rs.ScopeSpans().At(j)
-			for k := 0; k < ss.Spans().Len(); k++ {
-				spans = append(spans, ss.Spans().At(k))
-			}
-		}
-	}
-	return spans
 }
 
 func ptr[T any](v T) *T {
