@@ -6,7 +6,6 @@ toolchain go1.24.0
 
 require (
 	github.com/grafana/sobek v0.0.0-20250219104821-ed22af7a8d6c
-	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
 	go.k6.io/k6 v0.57.0
 	go.opentelemetry.io/collector/component v0.120.0
