@@ -31,17 +31,18 @@ const traceTemplates = [
     {
         defaults: traceDefaults,
         spans: [
-            {service: "shop-backend", name: "list-articles", duration: {min: 200, max: 900}},
-            {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}},
-            {service: "auth-service", name: "authenticate"},
+            {service: "shop-backend", name: "list-articles", duration: {min: 200, max: 900}, resource: { attributes: {"namespace": "shop"} }},
+            {service: "shop-backend", name: "authenticate", duration: {min: 50, max: 100}, resource: { randomAttributes: {count: 2} }},
+            {service: "auth-service", name: "authenticate", resource: { randomAttributes: {count: 3}, attributes: {"namespace": "auth"} }},
             {service: "shop-backend", name: "fetch-articles", parentIdx: 0},
             {
                 service: "article-service",
                 name: "list-articles",
-                links: [{attributes: {"link-type": "parent-child"}, randomAttributes: {count: 2, cardinality: 5}}]
+                links: [{attributes: {"link-type": "parent-child"}, randomAttributes: {count: 2, cardinality: 5}}],
+                resource: { attributes: {"namespace": "shop" }}
             },
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
-            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}},
+            {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 5}, resource: { attributes: {"namespace": "db"} }},
         ]
     },
     {

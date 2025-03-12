@@ -85,6 +85,17 @@ type SpanTemplate struct {
 	RandomEvents *EventParams `js:"randomEvents"`
 	// Generate random links for the span
 	RandomLinks *LinkParams `js:"randomLinks"`
+	// Resource controls the attributes generated for the resource. Spans with the same Service will have the same
+	// resource. Multiple resource definitions will be merged.
+	Resource *ResourceTemplate `js:"resource"`
+}
+
+type ResourceTemplate struct {
+	// Attributes that are added to this resource.
+	Attributes map[string]interface{} `js:"attributes"`
+	// RandomAttributes parameters to configure the creation of random attributes. If missing, no random attributes
+	// are added to the resource.
+	RandomAttributes *AttributeParams `js:"randomAttributes"`
 }
 
 // TraceTemplate describes how all a trace and it's spans are generated.
@@ -163,11 +174,13 @@ type internalSpanTemplate struct {
 }
 
 type internalResourceTemplate struct {
-	service   string
-	hostName  string
-	hostIP    string
-	transport string
-	hostPort  int
+	service          string
+	hostName         string
+	hostIP           string
+	transport        string
+	hostPort         int
+	attributes       map[string]interface{}
+	randomAttributes map[string][]interface{}
 }
 
 type internalLinkTemplate struct {
@@ -232,6 +245,13 @@ func (g *TemplatedGenerator) generateResourceSpans(resSpanSlice ptrace.ResourceS
 	resSpans := resSpanSlice.AppendEmpty()
 	resSpans.Resource().Attributes().PutStr("k6", "true")
 	resSpans.Resource().Attributes().PutStr("service.name", tmpl.service)
+
+	for k, v := range tmpl.attributes {
+		_ = resSpans.Resource().Attributes().PutEmpty(k).FromRaw(v)
+	}
+	for k, v := range tmpl.randomAttributes {
+		_ = resSpans.Resource().Attributes().PutEmpty(k).FromRaw(random.SelectElement(v))
+	}
 
 	scopeSpans := resSpans.ScopeSpans().AppendEmpty()
 	scopeSpans.Scope().SetName("k6-scope-name/" + random.String(15))
@@ -465,10 +485,12 @@ func (g *TemplatedGenerator) initialize(template *TraceTemplate) error {
 		}
 
 		// get or generate the corresponding ResourceSpans
-		_, found := g.resources[tmpl.Service]
+		res, found := g.resources[tmpl.Service]
 		if !found {
-			res := g.initializeResource(&tmpl)
+			res = g.initializeResource(&tmpl)
 			g.resources[tmpl.Service] = res
+		} else {
+			g.amendInitializedResource(res, &tmpl)
 		}
 
 		// span template parent index must reference a previous span
@@ -506,12 +528,33 @@ func (g *TemplatedGenerator) initialize(template *TraceTemplate) error {
 }
 
 func (g *TemplatedGenerator) initializeResource(tmpl *SpanTemplate) *internalResourceTemplate {
-	return &internalResourceTemplate{
+	res := internalResourceTemplate{
 		service:   tmpl.Service,
 		hostName:  fmt.Sprintf("%s.local", tmpl.Service),
 		hostIP:    random.IPAddr(),
 		hostPort:  random.Port(),
 		transport: "ip_tcp",
+	}
+
+	if tmpl.Resource != nil {
+		res.randomAttributes = initializeRandomAttributes(tmpl.Resource.RandomAttributes)
+		res.attributes = tmpl.Resource.Attributes
+	}
+
+	return &res
+}
+
+func (g *TemplatedGenerator) amendInitializedResource(res *internalResourceTemplate, tmpl *SpanTemplate) {
+	if tmpl.Resource == nil {
+		return
+	}
+
+	if tmpl.Resource.RandomAttributes != nil {
+		randAttr := initializeRandomAttributes(tmpl.Resource.RandomAttributes)
+		res.randomAttributes = util.MergeMaps(res.randomAttributes, randAttr)
+	}
+	if tmpl.Resource.Attributes != nil {
+		res.attributes = util.MergeMaps(res.attributes, tmpl.Resource.Attributes)
 	}
 }
 
