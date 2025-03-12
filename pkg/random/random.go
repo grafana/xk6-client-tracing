@@ -25,8 +25,11 @@ var (
 		"order", "payment", "customer", "product", "stock", "inventory",
 		"shipping", "billing", "checkout", "cart", "search", "analytics"}
 
-	rnd     *rand.Rand
-	randMtx = sync.Mutex{}
+	// rnd contains rand.Rand instance protected by a mutex
+	rnd = struct {
+		sync.Mutex
+		*rand.Rand
+	}{}
 )
 
 func init() {
@@ -35,24 +38,24 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	rnd = rand.New(rand.NewChaCha8(seed))
+	rnd.Rand = rand.New(rand.NewChaCha8(seed))
 }
 
 func Float32() float32 {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	return rnd.Float32()
 }
 
 func IntN(n int) int {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	return rnd.IntN(n)
 }
 
 func SelectElement[T any](elements []T) T {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	return elements[rnd.IntN(len(elements))]
 }
 
@@ -69,22 +72,22 @@ func K6String(n int) string {
 }
 
 func IntBetween(min, max int) int {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	n := rnd.IntN(max - min)
 	return min + n
 }
 
 func Duration(min, max time.Duration) time.Duration {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	n := rnd.Int64N(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
 func IPAddr() string {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	return fmt.Sprintf("192.168.%d.%d", rnd.IntN(255), rnd.IntN(255))
 }
 
@@ -137,8 +140,8 @@ func OperationForResource(resource string) string {
 }
 
 func TraceID() pcommon.TraceID {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 
 	var b [16]byte
 	binary.BigEndian.PutUint64(b[:8], rnd.Uint64())
@@ -147,8 +150,8 @@ func TraceID() pcommon.TraceID {
 }
 
 func SpanID() pcommon.SpanID {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 
 	var b [8]byte
 	binary.BigEndian.PutUint64(b[:], rnd.Uint64())
