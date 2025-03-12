@@ -2,9 +2,9 @@ package random
 
 import (
 	crand "crypto/rand"
+	"encoding/binary"
 	"fmt"
-	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"sync"
 	"time"
@@ -30,8 +30,12 @@ var (
 )
 
 func init() {
-	seed, _ := crand.Int(crand.Reader, big.NewInt(int64(^uint64(0)>>1)))
-	rnd = rand.New(rand.NewSource(seed.Int64()))
+	var seed [32]byte
+	_, err := crand.Read(seed[:])
+	if err != nil {
+		panic(err)
+	}
+	rnd = rand.New(rand.NewChaCha8(seed))
 }
 
 func Float32() float32 {
@@ -40,16 +44,16 @@ func Float32() float32 {
 	return rnd.Float32()
 }
 
-func Intn(n int) int {
+func IntN(n int) int {
 	randMtx.Lock()
 	defer randMtx.Unlock()
-	return rnd.Intn(n)
+	return rnd.IntN(n)
 }
 
 func SelectElement[T any](elements []T) T {
 	randMtx.Lock()
 	defer randMtx.Unlock()
-	return elements[rnd.Intn(len(elements))]
+	return elements[rnd.IntN(len(elements))]
 }
 
 func String(n int) string {
@@ -67,21 +71,21 @@ func K6String(n int) string {
 func IntBetween(min, max int) int {
 	randMtx.Lock()
 	defer randMtx.Unlock()
-	n := rnd.Intn(max - min)
+	n := rnd.IntN(max - min)
 	return min + n
 }
 
 func Duration(min, max time.Duration) time.Duration {
 	randMtx.Lock()
 	defer randMtx.Unlock()
-	n := rnd.Int63n(int64(max) - int64(min))
+	n := rnd.Int64N(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
 func IPAddr() string {
 	randMtx.Lock()
 	defer randMtx.Unlock()
-	return fmt.Sprintf("192.168.%d.%d", rnd.Intn(255), rnd.Intn(255))
+	return fmt.Sprintf("192.168.%d.%d", rnd.IntN(255), rnd.IntN(255))
 }
 
 func Port() int {
@@ -137,7 +141,8 @@ func TraceID() pcommon.TraceID {
 	defer randMtx.Unlock()
 
 	var b [16]byte
-	_, _ = rnd.Read(b[:]) // always returns nil error
+	binary.BigEndian.PutUint64(b[:8], rnd.Uint64())
+	binary.BigEndian.PutUint64(b[8:], rnd.Uint64())
 	return b
 }
 
@@ -146,7 +151,7 @@ func SpanID() pcommon.SpanID {
 	defer randMtx.Unlock()
 
 	var b [8]byte
-	_, _ = rnd.Read(b[:]) // always returns nil error
+	binary.BigEndian.PutUint64(b[:], rnd.Uint64())
 	return b
 }
 
