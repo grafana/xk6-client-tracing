@@ -32,7 +32,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
-		for _ = range testRounds {
+		for range testRounds {
 			count := 0
 			for i, span := range iterSpans(gen.Traces()) {
 				count++
@@ -76,7 +76,7 @@ func TestTemplatedGenerator_Resource(t *testing.T) {
 	gen, err := NewTemplatedGenerator(&template)
 	require.NoError(t, err)
 
-	for _ = range testRounds {
+	for range testRounds {
 		for _, res := range iterResources(gen.Traces()) {
 			srv, found := res.Attributes().Get("service.name")
 			require.True(t, found, "service.name not found")
@@ -120,7 +120,7 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
-		for _ = range testRounds {
+		for range testRounds {
 			count := 0
 			for _, span := range iterSpans(gen.Traces()) {
 				count++
