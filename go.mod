@@ -4,7 +4,10 @@ go 1.23.0
 
 toolchain go1.24.0
 
-tool gotest.tools/gotestsum
+tool (
+	golang.org/x/tools/cmd/goimports
+	gotest.tools/gotestsum
+)
 
 require (
 	github.com/grafana/sobek v0.0.0-20250219104821-ed22af7a8d6c

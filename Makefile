@@ -19,6 +19,13 @@ test:
 lint:
 	golangci-lint run $(GO_LINT_OPTS) ./...
 
+.PHONY: fmt
+fmt:
+	go tool goimports -w ./
+
+check-fmt: fmt
+	@git diff --exit-code
+
 .PHONY: docker
 docker:
 	docker build . -t $(IMAGE):$(IMAGE_TAG)
