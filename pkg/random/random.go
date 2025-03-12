@@ -40,6 +40,12 @@ func Float32() float32 {
 	return rnd.Float32()
 }
 
+func Intn(n int) int {
+	randMtx.Lock()
+	defer randMtx.Unlock()
+	return rnd.Intn(n)
+}
+
 func SelectElement[T any](elements []T) T {
 	randMtx.Lock()
 	defer randMtx.Unlock()
