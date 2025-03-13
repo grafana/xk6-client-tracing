@@ -3,7 +3,6 @@ package tracegen
 import (
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 	"unsafe"
@@ -99,7 +98,7 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 
 func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) {
 	endTime := time.Now().Round(time.Second)
-	startTime := endTime.Add(-time.Duration(rand.Intn(500)+10) * time.Millisecond)
+	startTime := endTime.Add(-time.Duration(random.IntN(500)+10) * time.Millisecond)
 
 	var traceID pcommon.TraceID
 	b, _ := hex.DecodeString(t.ID)
@@ -151,8 +150,8 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 			break
 		}
 
-		rKey := random.K6String(rand.Intn(15))
-		rVal := random.K6String(rand.Intn(15))
+		rKey := random.K6String(random.IntN(15) + 1)
+		rVal := random.K6String(random.IntN(15) + 1)
 		attrs.PutStr(rKey, rVal)
 
 		size += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))

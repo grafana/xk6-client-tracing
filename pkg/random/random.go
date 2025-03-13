@@ -2,9 +2,9 @@ package random
 
 import (
 	crand "crypto/rand"
+	"encoding/binary"
 	"fmt"
-	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"sync"
 	"time"
@@ -25,25 +25,38 @@ var (
 		"order", "payment", "customer", "product", "stock", "inventory",
 		"shipping", "billing", "checkout", "cart", "search", "analytics"}
 
-	rnd     *rand.Rand
-	randMtx = sync.Mutex{}
+	// rnd contains rand.Rand instance protected by a mutex
+	rnd = struct {
+		sync.Mutex
+		*rand.Rand
+	}{}
 )
 
 func init() {
-	seed, _ := crand.Int(crand.Reader, big.NewInt(int64(^uint64(0)>>1)))
-	rnd = rand.New(rand.NewSource(seed.Int64()))
+	var seed [32]byte
+	_, err := crand.Read(seed[:])
+	if err != nil {
+		panic(err)
+	}
+	rnd.Rand = rand.New(rand.NewChaCha8(seed))
 }
 
 func Float32() float32 {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 	return rnd.Float32()
 }
 
+func IntN(n int) int {
+	rnd.Lock()
+	defer rnd.Unlock()
+	return rnd.IntN(n)
+}
+
 func SelectElement[T any](elements []T) T {
-	randMtx.Lock()
-	defer randMtx.Unlock()
-	return elements[rnd.Intn(len(elements))]
+	rnd.Lock()
+	defer rnd.Unlock()
+	return elements[rnd.IntN(len(elements))]
 }
 
 func String(n int) string {
@@ -59,23 +72,23 @@ func K6String(n int) string {
 }
 
 func IntBetween(min, max int) int {
-	randMtx.Lock()
-	defer randMtx.Unlock()
-	n := rnd.Intn(max - min)
+	rnd.Lock()
+	defer rnd.Unlock()
+	n := rnd.IntN(max - min)
 	return min + n
 }
 
 func Duration(min, max time.Duration) time.Duration {
-	randMtx.Lock()
-	defer randMtx.Unlock()
-	n := rnd.Int63n(int64(max) - int64(min))
+	rnd.Lock()
+	defer rnd.Unlock()
+	n := rnd.Int64N(int64(max) - int64(min))
 	return min + time.Duration(n)
 }
 
 func IPAddr() string {
-	randMtx.Lock()
-	defer randMtx.Unlock()
-	return fmt.Sprintf("192.168.%d.%d", rnd.Intn(255), rnd.Intn(255))
+	rnd.Lock()
+	defer rnd.Unlock()
+	return fmt.Sprintf("192.168.%d.%d", rnd.IntN(255), rnd.IntN(255))
 }
 
 func Port() int {
@@ -127,20 +140,21 @@ func OperationForResource(resource string) string {
 }
 
 func TraceID() pcommon.TraceID {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 
 	var b [16]byte
-	_, _ = rnd.Read(b[:]) // always returns nil error
+	binary.BigEndian.PutUint64(b[:8], rnd.Uint64())
+	binary.BigEndian.PutUint64(b[8:], rnd.Uint64())
 	return b
 }
 
 func SpanID() pcommon.SpanID {
-	randMtx.Lock()
-	defer randMtx.Unlock()
+	rnd.Lock()
+	defer rnd.Unlock()
 
 	var b [8]byte
-	_, _ = rnd.Read(b[:]) // always returns nil error
+	binary.BigEndian.PutUint64(b[:], rnd.Uint64())
 	return b
 }
 

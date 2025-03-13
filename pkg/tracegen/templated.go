@@ -1,6 +1,7 @@
 package tracegen
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/grafana/xk6-client-tracing/pkg/random"
 	"github.com/grafana/xk6-client-tracing/pkg/util"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
@@ -147,7 +147,7 @@ func NewTemplatedGenerator(template *TraceTemplate) (*TemplatedGenerator, error)
 	gen := &TemplatedGenerator{}
 	err := gen.initialize(template)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to create new templated generator")
+		return nil, fmt.Errorf("fail to create new templated generator: %w", err)
 	}
 	return gen, nil
 }
@@ -609,7 +609,7 @@ func initializeSpanKind(parent *internalSpanTemplate, tmpl, child *SpanTemplate)
 	if k, found := tmpl.Attributes["span.kind"]; found {
 		kindStr, ok := k.(string)
 		if !ok {
-			return ptrace.SpanKindUnspecified, errors.Errorf("attribute %s expected to be a string, but was %T", "span.kind", k)
+			return ptrace.SpanKindUnspecified, fmt.Errorf("attribute span.kind expected to be a string, but was %T", k)
 		}
 		kind = spanKindFromString(kindStr)
 	} else {

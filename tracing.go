@@ -3,11 +3,11 @@ package clienttracing
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"sync"
 
 	"github.com/grafana/sobek"
-	"github.com/pkg/errors"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
@@ -85,13 +85,13 @@ func (ct *TracingModule) newClient(g sobek.ConstructorCall, rt *sobek.Runtime) *
 	var cfg ClientConfig
 	err := rt.ExportTo(g.Argument(0), &cfg)
 	if err != nil {
-		common.Throw(rt, errors.Wrap(err, "unable to create client: constructor expects first argument to be ClientConfig"))
+		common.Throw(rt, fmt.Errorf("unable to create client: constructor expects first argument to be ClientConfig: %w", err))
 	}
 
 	if ct.client == nil {
 		ct.client, err = NewClient(&cfg, ct.vu)
 		if err != nil {
-			common.Throw(rt, errors.Wrap(err, "unable to create client"))
+			common.Throw(rt, fmt.Errorf("unable to create client: %w", err))
 		}
 	}
 
@@ -107,7 +107,7 @@ func (ct *TracingModule) newParameterizedGenerator(g sobek.ConstructorCall, rt *
 		var param []*tracegen.TraceParams
 		err := rt.ExportTo(paramVal, &param)
 		if err != nil {
-			common.Throw(rt, errors.Wrap(err, "the ParameterizedGenerator constructor expects first argument to be []TraceParams"))
+			common.Throw(rt, fmt.Errorf("the ParameterizedGenerator constructor expects first argument to be []TraceParams: %w", err))
 		}
 
 		generator = tracegen.NewParameterizedGenerator(param)
@@ -126,12 +126,12 @@ func (ct *TracingModule) newTemplatedGenerator(g sobek.ConstructorCall, rt *sobe
 		var tmpl tracegen.TraceTemplate
 		err := rt.ExportTo(tmplVal, &tmpl)
 		if err != nil {
-			common.Throw(rt, errors.Wrap(err, "the TemplatedGenerator constructor expects first argument to be TraceTemplate"))
+			common.Throw(rt, fmt.Errorf("the TemplatedGenerator constructor expects first argument to be TraceTemplate: %w", err))
 		}
 
 		generator, err = tracegen.NewTemplatedGenerator(&tmpl)
 		if err != nil {
-			common.Throw(rt, errors.Wrap(err, "unable to generate TemplatedGenerator"))
+			common.Throw(rt, fmt.Errorf("unable to generate TemplatedGenerator: %w", err))
 		}
 
 		ct.templatedGenerators[tmplObj] = generator
@@ -208,7 +208,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 			}, cfg.Headers),
 		}
 	default:
-		return nil, errors.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
+		return nil, fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
 	}
 
 	exporter, err := factory.CreateTraces(
@@ -224,12 +224,12 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		exporterCfg,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed create exporter")
+		return nil, fmt.Errorf("failed create exporter: %w", err)
 	}
 
 	err = exporter.Start(vu.Context(), componenttest.NewNopHost())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start exporter")
+		return nil, fmt.Errorf("failed to start exporter: %w", err)
 	}
 
 	return &Client{
