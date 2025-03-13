@@ -102,6 +102,18 @@ The template has the following schema:
             // The number of distinct values to generate for each attribute (optional, default: 50)
             cardinality: int
         }
+        // Default resource attributes for all resources in the trace (optional)
+        resource: {
+            // Fixed attributs that are added to each resource (optional)
+            attributes: { string : any },
+            // Parameters to configure the creation of random resource attributes (optional)
+            randomAttributes: {
+                // The number of random attributes to generate
+                count: int,
+                // The number of distinct values to generate for each attribute (optional, default: 50)
+                cardinality: int
+            }
+        }
     },
     // Templates for the individual spans
     spans: [
@@ -129,6 +141,19 @@ The template has the following schema:
                 count: int,
                 // The number of distinct values to generate for each attribute (optional, default: 50)
                 cardinality: int
+            },
+            // Additional attributes for the resource associated with this span. Resource attribute definitions
+            // of different spans with the same service name will me merged into a singe resource (optional)
+            resource: {
+                // Fixed attributs that are added to the resource (optional)
+                attributes: { string : any },
+                // Parameters to configure the creation of random resource attributes (optional)
+                randomAttributes: {
+                    // The number of random attributes to generate
+                    count: int,
+                    // The number of distinct values to generate for each attribute (optional, default: 50)
+                    cardinality: int
+                }
             }
         },
         ...

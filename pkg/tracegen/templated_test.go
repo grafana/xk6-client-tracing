@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
@@ -31,22 +32,65 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
-		for i := 0; i < testRounds; i++ {
-			traces := gen.Traces()
-			spans := collectSpansFromTrace(traces)
-
-			assert.Len(t, spans, len(template.Spans))
-			for i, span := range spans {
-				assert.GreaterOrEqual(t, attributesWithPrefix(span, "k6."), template.Defaults.RandomAttributes.Count)
+		for range testRounds {
+			count := 0
+			for i, span := range iterSpans(gen.Traces()) {
+				count++
+				requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "k6.")
 				if template.Spans[i].Name != nil {
 					assert.Equal(t, *template.Spans[i].Name, span.Name())
 				}
 				if span.Kind() != ptrace.SpanKindInternal {
-					assert.GreaterOrEqual(t, attributesWithPrefix(span, "net."), 3)
+					requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "net.")
 					if *template.Defaults.AttributeSemantics == SemanticsHTTP {
-						assert.GreaterOrEqual(t, attributesWithPrefix(span, "http."), 5)
+						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 5, "http.")
 					}
 				}
+			}
+			assert.Equal(t, len(template.Spans), count, "unexpected number of spans")
+		}
+	}
+}
+
+func TestTemplatedGenerator_Resource(t *testing.T) {
+	template := TraceTemplate{
+		Defaults: SpanDefaults{
+			Attributes: map[string]interface{}{"span-attr": "val-01"},
+			Resource:   &ResourceTemplate{RandomAttributes: &AttributeParams{Count: 2}},
+		},
+		Spans: []SpanTemplate{
+			{Service: "test-service-a", Name: ptr("action-a-a"), Resource: &ResourceTemplate{
+				Attributes:       map[string]interface{}{"res-attr-01": "res-val-01"},
+				RandomAttributes: &AttributeParams{Count: 5},
+			}},
+			{Service: "test-service-a", Name: ptr("action-a-b"), Resource: &ResourceTemplate{
+				Attributes: map[string]interface{}{"res-attr-02": "res-val-02"},
+			}},
+			{Service: "test-service-b", Name: ptr("action-b-a"), Resource: &ResourceTemplate{
+				Attributes: map[string]interface{}{"res-attr-03": "res-val-03"},
+			}},
+			{Service: "test-service-b", Name: ptr("action-b-b")},
+		},
+	}
+
+	gen, err := NewTemplatedGenerator(&template)
+	require.NoError(t, err)
+
+	for range testRounds {
+		for _, res := range iterResources(gen.Traces()) {
+			srv, found := res.Attributes().Get("service.name")
+			require.True(t, found, "service.name not found")
+
+			switch srv.Str() {
+			case "test-service-a":
+				requireAttributeCountEqual(t, res.Attributes(), 5, "k6.")
+				requireAttributeEqual(t, res.Attributes(), "res-attr-01", "res-val-01")
+				requireAttributeEqual(t, res.Attributes(), "res-attr-02", "res-val-02")
+			case "test-service-b":
+				requireAttributeCountEqual(t, res.Attributes(), 3, "k6.")
+				requireAttributeEqual(t, res.Attributes(), "res-attr-03", "res-val-03")
+			default:
+				require.Fail(t, "unexpected service name %s", srv.Str())
 			}
 		}
 	}
@@ -76,12 +120,10 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 		gen, err := NewTemplatedGenerator(&template)
 		assert.NoError(t, err)
 
-		for i := 0; i < testRounds; i++ {
-			traces := gen.Traces()
-			spans := collectSpansFromTrace(traces)
-
-			assert.Len(t, spans, len(template.Spans))
-			for _, span := range spans {
+		for range testRounds {
+			count := 0
+			for _, span := range iterSpans(gen.Traces()) {
+				count++
 				events := span.Events()
 				links := span.Links()
 				checkEventsLinksLength := func(expectedTemplate, expectedRandom int, spanName string) {
@@ -144,33 +186,79 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 					assert.True(t, found, "exception event not found")
 				}
 			}
+			assert.Equal(t, len(template.Spans), count, "unexpected number of spans")
 		}
 	}
 }
 
-func attributesWithPrefix(span ptrace.Span, prefix string) int {
+func iterSpans(traces ptrace.Traces) func(func(i int, e ptrace.Span) bool) {
+	count := 0
+	return func(f func(i int, e ptrace.Span) bool) {
+		var elem ptrace.Span
+		for i := 0; i < traces.ResourceSpans().Len(); i++ {
+			rs := traces.ResourceSpans().At(i)
+			for j := 0; j < rs.ScopeSpans().Len(); j++ {
+				ss := rs.ScopeSpans().At(j)
+				for k := 0; k < ss.Spans().Len(); k++ {
+					elem = ss.Spans().At(k)
+					if !f(count, elem) {
+						return
+					}
+					count++
+				}
+			}
+		}
+	}
+}
+
+func iterResources(traces ptrace.Traces) func(func(i int, e pcommon.Resource) bool) {
+	return func(f func(i int, e pcommon.Resource) bool) {
+		var elem pcommon.Resource
+		for i := 0; i < traces.ResourceSpans().Len(); i++ {
+			rs := traces.ResourceSpans().At(i)
+			elem = rs.Resource()
+			if !f(i, elem) {
+				return
+			}
+		}
+	}
+}
+
+func requireAttributeCountGreaterOrEqual(t *testing.T, attributes pcommon.Map, compare int, prefixes ...string) {
+	t.Helper()
+	count := countAttributes(attributes, prefixes...)
+	require.GreaterOrEqual(t, count, compare, "expected at least %d attributes, got %d", compare, count)
+}
+
+func requireAttributeCountEqual(t *testing.T, attributes pcommon.Map, expected int, prefixes ...string) {
+	t.Helper()
+	count := countAttributes(attributes, prefixes...)
+	require.GreaterOrEqual(t, expected, count, "expected at least %d attributes, got %d", expected, count)
+}
+
+func requireAttributeEqual(t *testing.T, attributes pcommon.Map, key string, expected any) {
+	t.Helper()
+	val, found := attributes.Get(key)
+	require.True(t, found, "attribute %s not found", key)
+	require.Equal(t, expected, val.AsRaw(), "value %v expected for attribute %s but was %v", expected, key, val.AsRaw())
+}
+
+func countAttributes(attributes pcommon.Map, prefixes ...string) int {
 	var count int
-	span.Attributes().Range(func(k string, _ pcommon.Value) bool {
-		if strings.HasPrefix(k, prefix) {
+	attributes.Range(func(k string, _ pcommon.Value) bool {
+		if len(prefixes) == 0 {
 			count++
+			return true
+		}
+
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(k, prefix) {
+				count++
+			}
 		}
 		return true
 	})
 	return count
-}
-
-func collectSpansFromTrace(traces ptrace.Traces) []ptrace.Span {
-	var spans []ptrace.Span
-	for i := 0; i < traces.ResourceSpans().Len(); i++ {
-		rs := traces.ResourceSpans().At(i)
-		for j := 0; j < rs.ScopeSpans().Len(); j++ {
-			ss := rs.ScopeSpans().At(j)
-			for k := 0; k < ss.Spans().Len(); k++ {
-				spans = append(spans, ss.Spans().At(k))
-			}
-		}
-	}
-	return spans
 }
 
 func ptr[T any](v T) *T {
