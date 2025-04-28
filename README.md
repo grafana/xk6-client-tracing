@@ -6,7 +6,7 @@
 
 This extension provides k6 with the required functionality required to load test distributed tracing backends.
 
-## Usage
+## Usage 
 
 Generating traces and sending them to an agent or backend requires two things: a client and a trace generator.
 Generators have a method called `traces()` that can be used to generate traces.
