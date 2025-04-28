@@ -122,7 +122,7 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 	span.SetKind(ptrace.SpanKindClient)
 	span.SetStartTimestamp(pcommon.NewTimestampFromTime(startTime))
 	span.SetEndTimestamp(pcommon.NewTimestampFromTime(endTime))
-	span.TraceState().FromRaw("x:y")
+	span.TraceState().FromRaw("ot=x:y")
 
 	event := span.Events().AppendEmpty()
 	event.SetName(random.K6String(12))
