@@ -13,14 +13,18 @@ import (
 )
 
 const (
-	defaultSpanCount = 10
-	defaultSpanSize  = 1000
+	defaultTraceCount   = 1
+	defaultSpanCount    = 10
+	defaultSpanSize     = 1000
+	defaultResourceSize = 0
 )
 
 type TraceParams struct {
 	ID                string     `json:"id"`
 	ParentID          string     `json:"parent_id"`
 	RandomServiceName bool       `json:"random_service_name"`
+	ResourceSize      int        `json:"resource_size"`
+	Count             int        `json:"count"`
 	Spans             SpanParams `json:"spans"`
 }
 
@@ -32,6 +36,12 @@ type SpanParams struct {
 }
 
 func (tp *TraceParams) setDefaults() {
+	if tp.Count == 0 {
+		tp.Count = defaultTraceCount
+	}
+	if tp.ResourceSize <= 0 {
+		tp.ResourceSize = defaultResourceSize
+	}
 	if tp.Spans.Count == 0 {
 		tp.Spans.Count = defaultSpanCount
 	}
@@ -68,6 +78,8 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		}
 		rspan.Resource().Attributes().PutStr("k6", "true")
 		rspan.Resource().Attributes().PutStr("service.name", serviceName)
+		resourceAttributes := g.constructAttributes(te.ResourceSize)
+		resourceAttributes.CopyTo(rspan.Resource().Attributes())
 
 		ilss := rspan.ScopeSpans()
 		ilss.EnsureCapacity(1)
@@ -75,20 +87,24 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		ils.Scope().SetName("k6-scope-name/" + random.String(15))
 		ils.Scope().SetVersion("k6-scope-version:v" + strconv.Itoa(random.IntBetween(0, 99)) + "." + strconv.Itoa(random.IntBetween(0, 99)))
 
-		if te.ID == "" {
-			te.ID = random.TraceID().String()
-		}
+		for range te.Count {
+			// Randomize traceID every time if we're generating multiple traces
+			if te.ID == "" || te.Count > 1 {
+				te.ID = random.TraceID().String()
+				te.ParentID = ""
+			}
 
-		// Spans
-		sps := ils.Spans()
-		sps.EnsureCapacity(te.Spans.Count)
-		for e := 0; e < te.Spans.Count; e++ {
-			if e == 0 {
-				g.generateSpan(te, sps.AppendEmpty())
-				idxSpan := sps.At(0)
-				te.ParentID = idxSpan.SpanID().String()
-			} else {
-				g.generateSpan(te, sps.AppendEmpty())
+			// Spans
+			sps := ils.Spans()
+			sps.EnsureCapacity(te.Spans.Count)
+			for e := range te.Spans.Count {
+				if e == 0 {
+					g.generateSpan(te, sps.AppendEmpty())
+					idxSpan := sps.At(0)
+					te.ParentID = idxSpan.SpanID().String()
+				} else {
+					g.generateSpan(te, sps.AppendEmpty())
+				}
 			}
 		}
 	}
@@ -138,24 +154,8 @@ func (g *ParameterizedGenerator) generateSpan(t *TraceParams, dest ptrace.Span) 
 	status.SetCode(1)
 	status.SetMessage("OK")
 
-	attrs := pcommon.NewMap()
-	if len(t.Spans.FixedAttrs) > 0 {
-		g.constructSpanAttributes(t.Spans.FixedAttrs, attrs)
-	}
-
-	// Fill the span with some random data
-	var size int64
-	for {
-		if size >= int64(t.Spans.Size) {
-			break
-		}
-
-		rKey := random.K6String(random.IntN(15) + 1)
-		rVal := random.K6String(random.IntN(15) + 1)
-		attrs.PutStr(rKey, rVal)
-
-		size += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))
-	}
+	attrs := g.constructAttributes(t.Spans.Size)
+	g.constructSpanAttributes(t.Spans.FixedAttrs, attrs)
 
 	attrs.CopyTo(span.Attributes())
 	span.CopyTo(dest)
@@ -173,4 +173,24 @@ func (g *ParameterizedGenerator) constructSpanAttributes(attributes map[string]i
 		}
 	}
 	attrs.CopyTo(dst)
+}
+
+func (g *ParameterizedGenerator) constructAttributes(size int) pcommon.Map {
+	attrs := pcommon.NewMap()
+
+	// Fill the span with some random data
+	var currentSize int64
+	for {
+		if currentSize >= int64(size) {
+			break
+		}
+
+		rKey := random.K6String(random.IntN(15) + 1)
+		rVal := random.K6String(random.IntN(15) + 1)
+		attrs.PutStr(rKey, rVal)
+
+		currentSize += int64(unsafe.Sizeof(rKey)) + int64(unsafe.Sizeof(rVal))
+	}
+
+	return attrs
 }

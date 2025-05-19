@@ -12,23 +12,25 @@ const client = new tracing.Client({
     endpoint,
     exporter: tracing.EXPORTER_OTLP,
     tls: {
-      insecure: true,
+        insecure: true,
     }
 });
 
 export default function () {
-    let pushSizeTraces = randomIntBetween(2,3);
+    let pushSizeTraces = randomIntBetween(2, 3);
     let pushSizeSpans = 0;
     let t = [];
     for (let i = 0; i < pushSizeTraces; i++) {
-        let c = randomIntBetween(5,10)
+        let c = randomIntBetween(5, 10)
         pushSizeSpans += c;
 
         t.push({
             random_service_name: false,
+            count: 1,
+            resource_size: 100,
             spans: {
                 count: c,
-                size: randomIntBetween(300,1000),
+                size: randomIntBetween(300, 1000),
                 random_name: true,
                 fixed_attrs: {
                     "test": "test",
