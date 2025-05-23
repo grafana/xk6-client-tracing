@@ -76,10 +76,10 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		if te.RandomServiceName {
 			serviceName += "." + random.String(5)
 		}
-		rspan.Resource().Attributes().PutStr("k6", "true")
-		rspan.Resource().Attributes().PutStr("service.name", serviceName)
 		resourceAttributes := g.constructAttributes(te.ResourceSize)
 		resourceAttributes.CopyTo(rspan.Resource().Attributes())
+		rspan.Resource().Attributes().PutStr("k6", "true")
+		rspan.Resource().Attributes().PutStr("service.name", serviceName)
 
 		ilss := rspan.ScopeSpans()
 		ilss.EnsureCapacity(1)
