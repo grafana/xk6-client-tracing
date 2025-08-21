@@ -568,14 +568,15 @@ func (g *TemplatedGenerator) amendInitializedResource(res *internalResourceTempl
 func (g *TemplatedGenerator) initializeSpan(idx int, parent *internalSpanTemplate, defaults *SpanDefaults, tmpl, child *SpanTemplate) (*internalSpanTemplate, error) {
 	res := g.resources[tmpl.Service]
 	span := internalSpanTemplate{
-		idx:      idx,
-		parent:   parent,
-		resource: res,
-		duration: tmpl.Duration,
+		idx:                idx,
+		parent:             parent,
+		resource:           res,
+		duration:           tmpl.Duration,
+		attributeSemantics: tmpl.AttributeSemantics,
 	}
 
 	// apply defaults
-	if tmpl.AttributeSemantics == nil {
+	if span.attributeSemantics == nil {
 		span.attributeSemantics = defaults.AttributeSemantics
 	}
 	span.attributes = util.MergeMaps(defaults.Attributes, tmpl.Attributes)
