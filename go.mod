@@ -1,6 +1,6 @@
 module github.com/grafana/xk6-client-tracing
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.0
 
@@ -17,7 +17,7 @@ require (
 	go.opentelemetry.io/collector/component/componenttest v0.120.0
 	go.opentelemetry.io/collector/config/configgrpc v0.120.0
 	go.opentelemetry.io/collector/config/confighttp v0.120.0
-	go.opentelemetry.io/collector/config/configopaque v1.26.0
+	go.opentelemetry.io/collector/config/configopaque v1.40.0
 	go.opentelemetry.io/collector/config/configtls v1.26.0
 	go.opentelemetry.io/collector/exporter v0.120.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.120.0
