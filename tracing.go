@@ -191,8 +191,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlpexporter.Config).ClientConfig = configgrpc.ClientConfig{
-			Endpoint:   cfg.Endpoint,
-			TLSSetting: tlsConfig,
+			Endpoint: cfg.Endpoint,
+			TLS:      tlsConfig,
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
@@ -201,8 +201,8 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = otlphttpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlphttpexporter.Config).ClientConfig = confighttp.ClientConfig{
-			Endpoint:   cfg.Endpoint,
-			TLSSetting: tlsConfig,
+			Endpoint: cfg.Endpoint,
+			TLS:      tlsConfig,
 			Headers: util.MergeMaps(map[string]configopaque.String{
 				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
 			}, cfg.Headers),
