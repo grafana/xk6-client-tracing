@@ -448,9 +448,9 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 		span.Attributes().PutStr(attrURLScheme, requestURL.Scheme)
 		span.Attributes().PutStr(attrURLTarget, requestURL.Path)
 
-		putIfNotExists(span.Attributes(), attrHTTPResponseHeaderContentLength, []int{random.IntBetween(100_000, 1_000_000)})
+		putIfNotExists(span.Attributes(), attrHTTPResponseHeaderContentLength, []any{random.IntBetween(100_000, 1_000_000)})
 		if method == http.MethodPatch || method == http.MethodPost || method == http.MethodPut {
-			putIfNotExists(span.Attributes(), attrHTTPRequestHeaderContentLength, []int{random.IntBetween(10_000, 100_000)})
+			putIfNotExists(span.Attributes(), attrHTTPRequestHeaderContentLength, []any{random.IntBetween(10_000, 100_000)})
 		}
 
 		if parent != nil && parent.Kind() == ptrace.SpanKindClient {
