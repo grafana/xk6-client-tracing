@@ -13,7 +13,7 @@ import (
 const testRounds = 5
 
 func TestTemplatedGenerator_Traces(t *testing.T) {
-	attributeSemantics := []OTelSemantics{SemanticsHTTP}
+	attributeSemantics := []OTelSemantics{SemanticsHTTP, SemanticsDB}
 	template := TraceTemplate{
 		Defaults: SpanDefaults{
 			Attributes:       map[string]interface{}{"fixed.attr": "some-value"},
@@ -24,6 +24,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 			{Service: "test-service"},
 			{Service: "test-service", Name: ptr("get_test_data")},
 			{Service: "test-data", Name: ptr("list_test_data"), Attributes: map[string]interface{}{"http.status_code": 400}},
+			{Service: "test-forced-semantic", AttributeSemantics: &attributeSemantics[0]},
 		},
 	}
 
@@ -37,12 +38,16 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 			for i, span := range iterSpans(gen.Traces()) {
 				count++
 				requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "k6.")
-				if template.Spans[i].Name != nil {
+				spanTemplate := template.Spans[i]
+				if spanTemplate.Name != nil {
 					assert.Equal(t, *template.Spans[i].Name, span.Name())
 				}
 				if span.Kind() != ptrace.SpanKindInternal {
 					requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "net.")
 					if *template.Defaults.AttributeSemantics == SemanticsHTTP {
+						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 5, "http.")
+					}
+					if spanTemplate.AttributeSemantics != nil && *spanTemplate.AttributeSemantics == SemanticsHTTP {
 						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 5, "http.")
 					}
 				}
