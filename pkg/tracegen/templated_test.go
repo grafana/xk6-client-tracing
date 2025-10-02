@@ -23,7 +23,7 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 			{Service: "test-service", Name: ptr("perform-test"), RandomAttributes: &AttributeParams{Count: 2}},
 			{Service: "test-service"},
 			{Service: "test-service", Name: ptr("get_test_data")},
-			{Service: "test-data", Name: ptr("list_test_data"), Attributes: map[string]interface{}{"http.status_code": 400}},
+			{Service: "test-data", Name: ptr("list_test_data"), Attributes: map[string]interface{}{attrHTTPStatusCode: 400}},
 			{Service: "test-forced-semantic", AttributeSemantics: &attributeSemantics[0]},
 		},
 	}
@@ -45,10 +45,10 @@ func TestTemplatedGenerator_Traces(t *testing.T) {
 				if span.Kind() != ptrace.SpanKindInternal {
 					requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "net.")
 					if *template.Defaults.AttributeSemantics == SemanticsHTTP {
-						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 5, "http.")
+						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "http.")
 					}
 					if spanTemplate.AttributeSemantics != nil && *spanTemplate.AttributeSemantics == SemanticsHTTP {
-						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 5, "http.")
+						requireAttributeCountGreaterOrEqual(t, span.Attributes(), 3, "http.")
 					}
 				}
 			}
@@ -83,7 +83,7 @@ func TestTemplatedGenerator_Resource(t *testing.T) {
 
 	for range testRounds {
 		for _, res := range iterResources(gen.Traces()) {
-			srv, found := res.Attributes().Get("service.name")
+			srv, found := res.Attributes().Get(attrServiceName)
 			require.True(t, found, "service.name not found")
 
 			switch srv.Str() {
@@ -116,7 +116,7 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 			{Service: "test-service", Name: ptr("default_and_template"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}},
 			{Service: "test-service", Name: ptr("default_and_random"), RandomEvents: &EventParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: &LinkParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
 			{Service: "test-service", Name: ptr("default_template_random"), Events: []Event{{Name: "event-name", RandomAttributes: &AttributeParams{Count: 2}}}, Links: []Link{{Attributes: map[string]interface{}{"link-attr-key": "link-attr-value"}}}, RandomEvents: &EventParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}, RandomLinks: &LinkParams{Count: 2, RandomAttributes: &AttributeParams{Count: 1}}},
-			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{"http.status_code": 400}},
+			{Service: "test-service", Name: ptr("default_generate_on_error"), Attributes: map[string]interface{}{attrHTTPStatusCode: 400}},
 		},
 	}
 

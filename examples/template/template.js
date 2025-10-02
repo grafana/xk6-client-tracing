@@ -61,19 +61,19 @@ const traceTemplates = [
             {service: "article-service", name: "select-articles", attributeSemantics: tracing.SEMANTICS_DB},
             {service: "postgres", name: "query-articles", attributeSemantics: tracing.SEMANTICS_DB, randomAttributes: {count: 2}},
             {service: "shop-backend", name: "place-articles", parentIdx: 0},
-            {service: "cart-service", name: "place-articles", attributes: {"article.count": 1, "http.status_code": 201}},
+            {service: "cart-service", name: "place-articles", attributes: {"article.count": 1, "http.response.status_code": 201}},
             {service: "cart-service", name: "persist-cart"}
         ]
     },
     {
         defaults: traceDefaults,
         spans: [
-            {service: "shop-backend", attributes: {"http.status_code": 403}},
+            {service: "shop-backend", attributes: {"http.response.status_code": 403}},
             {service: "shop-backend", name: "authenticate", attributes: {"http.request.header.accept": ["application/json"]}},
             {
                 service: "auth-service",
                 name: "authenticate",
-                attributes: {"http.status_code": 403},
+                attributes: {"http.status_code": 403}, // use legacy attribute name to generate more heterogeneous traces
                 randomEvents: {count: 0.5, exceptionCount: 2, randomAttributes: {count: 5, cardinality: 5}}
             },
         ]
@@ -93,7 +93,8 @@ const traceTemplates = [
                 service: "billing-service",
                 name: "payment",
                 randomLinks: {count: 0.5, randomAttributes: {count: 3, cardinality: 10}},
-                randomEvents: {exceptionOnError: true, randomAttributes: {count: 4}}}
+                randomEvents: {exceptionOnError: true, randomAttributes: {count: 4}}
+            }
         ]
     },
 ]

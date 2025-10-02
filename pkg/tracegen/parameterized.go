@@ -79,7 +79,7 @@ func (g *ParameterizedGenerator) Traces() ptrace.Traces {
 		resourceAttributes := g.constructAttributes(te.ResourceSize)
 		resourceAttributes.CopyTo(rspan.Resource().Attributes())
 		rspan.Resource().Attributes().PutStr("k6", "true")
-		rspan.Resource().Attributes().PutStr("service.name", serviceName)
+		rspan.Resource().Attributes().PutStr(attrServiceName, serviceName)
 
 		ilss := rspan.ScopeSpans()
 		ilss.EnsureCapacity(1)
