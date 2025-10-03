@@ -1,8 +1,6 @@
 module github.com/grafana/xk6-client-tracing
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24.0
 
 tool (
 	golang.org/x/tools/cmd/goimports
@@ -11,13 +9,13 @@ tool (
 
 require (
 	github.com/grafana/sobek v0.0.0-20250219104821-ed22af7a8d6c
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6 v0.57.0
 	go.opentelemetry.io/collector/component v0.120.0
 	go.opentelemetry.io/collector/component/componenttest v0.120.0
 	go.opentelemetry.io/collector/config/configgrpc v0.120.0
 	go.opentelemetry.io/collector/config/confighttp v0.120.0
-	go.opentelemetry.io/collector/config/configopaque v1.26.0
+	go.opentelemetry.io/collector/config/configopaque v1.42.0
 	go.opentelemetry.io/collector/config/configtls v1.26.0
 	go.opentelemetry.io/collector/exporter v0.120.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.120.0
