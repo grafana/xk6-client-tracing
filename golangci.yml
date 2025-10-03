@@ -29,8 +29,6 @@ linters:
         - G404 # use of weak random number generator
     staticcheck:
 
-
-
 exclusions:
     generated: lax
     presets:
@@ -38,18 +36,10 @@ exclusions:
       - common-false-positives
       - legacy
       - std-error-handling
-#    rules:
-#      - path: (.+)\.go$
-#        text: 'var-naming: don''t use an underscore in package name'
-#      - path: (.+)\.go$
-#        text: 'redefines-builtin-id: redefinition of the built-in function max'
-#      - path: (.+)\.go$
-#        text: 'redefines-builtin-id: redefinition of the built-in function min'
     paths:
       - third_party$
       - builtin$
       - examples$
-
 
 formatters:
   enable:
