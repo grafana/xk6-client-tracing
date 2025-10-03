@@ -214,6 +214,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 	exporter, err := factory.CreateTraces(
 		context.Background(),
 		exporter.Settings{
+			ID: component.NewID(factory.Type()),
 			TelemetrySettings: component.TelemetrySettings{
 				Logger:         zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{}), zapcore.AddSync(os.Stdout), zap.InfoLevel)),
 				TracerProvider: tracenoop.NewTracerProvider(),
