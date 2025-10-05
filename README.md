@@ -72,7 +72,7 @@ The following listing creates a generator that creates traces with a single span
 ```javascript
 const template = {
     spans: [
-        {service: "article-service", name: "get-articles", attributes: {"http.method": "GET"}}
+        {service: "article-service", name: "get-articles", attributes: {"http.request.method": "GET"}}
     ]
 };
 let gen = new tracing.TemplatedGenerator(template);

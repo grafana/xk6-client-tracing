@@ -36,7 +36,7 @@ func TestParameterizedGenerator_Traces(t *testing.T) {
 	// Validate resource span
 	rs := traces.ResourceSpans().At(0)
 	attrs := rs.Resource().Attributes()
-	_, hasServiceName := attrs.Get("service.name")
+	_, hasServiceName := attrs.Get(attrServiceName)
 	_, hasK6 := attrs.Get("k6")
 	assert.True(t, hasServiceName, "Should have service.name attribute")
 	assert.True(t, hasK6, "Should have k6 attribute")
