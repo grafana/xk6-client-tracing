@@ -246,7 +246,7 @@ func (g *TemplatedGenerator) Traces() ptrace.Traces {
 func (g *TemplatedGenerator) generateResourceSpans(resSpanSlice ptrace.ResourceSpansSlice, tmpl *internalResourceTemplate) ptrace.ResourceSpans {
 	resSpans := resSpanSlice.AppendEmpty()
 	resSpans.Resource().Attributes().PutStr("k6", "true")
-	resSpans.Resource().Attributes().PutStr("service.name", tmpl.service)
+	resSpans.Resource().Attributes().PutStr(attrServiceName, tmpl.service)
 
 	for k, v := range tmpl.attributes {
 		_ = resSpans.Resource().Attributes().PutEmpty(k).FromRaw(v)
@@ -314,10 +314,8 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 
 	// generate events
 	var hasError bool
-	if st, found := span.Attributes().Get("http.status_code"); found {
-		hasError = st.Int() >= 400
-	} else if st, found = span.Attributes().Get("http.response.status_code"); found {
-		hasError = st.Int() >= 400
+	if st, found := getHTTPStatusCode(span.Attributes()); found {
+		hasError = st >= 400
 	}
 
 	span.Events().EnsureCapacity(len(tmpl.events))
@@ -406,35 +404,32 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 		parentAttr = parent.Attributes()
 	}
 
-	putIfNotExists(span.Attributes(), "http.flavor", "1.1")
+	putIfNotExists(span.Attributes(), "network.protocol.name", "http")
+	putIfNotExists(span.Attributes(), "network.protocol.version", "1.1")
 
 	if tmpl.kind == ptrace.SpanKindServer {
 		var method string
-		if m, found := span.Attributes().Get("http.method"); found {
-			method = m.Str()
-		} else if m, found = parentAttr.Get("http.method"); found {
-			method = m.Str()
+		if m, found := getHTTPMethod(span.Attributes()); found {
+			method = m
 		} else {
 			method = random.HTTPMethod()
-			span.Attributes().PutStr("http.method", method)
+			span.Attributes().PutStr(attrHTTPMethod, method)
 		}
 
 		var contentType []any
-		if ct, found := span.Attributes().Get("http.response.header.content-type"); found {
+		if ct, found := span.Attributes().Get(attrHTTPResponseHeaderContentType); found {
 			contentType = ct.Slice().AsRaw()
 		} else {
 			contentType = random.HTTPContentType()
-			_ = span.Attributes().PutEmptySlice("http.response.header.content-type").FromRaw(contentType)
+			_ = span.Attributes().PutEmptySlice(attrHTTPResponseHeaderContentType).FromRaw(contentType)
 		}
 
 		var status int64
-		if st, found := span.Attributes().Get("http.status_code"); found {
-			status = st.Int()
-		} else if st, found = parentAttr.Get("http.status_code"); found {
-			status = st.Int()
+		if st, found := getHTTPStatusCode(span.Attributes()); found {
+			status = st
 		} else {
 			status = random.HTTPStatusSuccess()
-			span.Attributes().PutInt("http.status_code", status)
+			span.Attributes().PutInt(attrHTTPStatusCode, status)
 		}
 		if status >= 500 {
 			span.Status().SetCode(ptrace.StatusCodeError)
@@ -442,20 +437,20 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 		}
 
 		var requestURL *url.URL
-		if u, found := span.Attributes().Get("http.url"); found {
+		if u, found := span.Attributes().Get(attrURL); found {
 			requestURL, _ = url.ParseRequestURI(u.Str())
-		} else if u, found = parentAttr.Get("http.url"); found {
+		} else if u, found = parentAttr.Get(attrURL); found {
 			requestURL, _ = url.ParseRequestURI(u.Str())
 		} else {
 			requestURL, _ = url.ParseRequestURI(fmt.Sprintf("https://%s:%d/%s", tmpl.resource.hostName, tmpl.resource.hostPort, tmpl.name))
-			span.Attributes().PutStr("http.url", requestURL.String())
+			span.Attributes().PutStr(attrURL, requestURL.String())
 		}
-		span.Attributes().PutStr("http.scheme", requestURL.Scheme)
-		span.Attributes().PutStr("http.target", requestURL.Path)
+		span.Attributes().PutStr(attrURLScheme, requestURL.Scheme)
+		span.Attributes().PutStr(attrURLTarget, requestURL.Path)
 
-		putIfNotExists(span.Attributes(), "http.response_content_length", random.IntBetween(100_000, 1_000_000))
+		putIfNotExists(span.Attributes(), attrHTTPResponseHeaderContentLength, []any{random.IntBetween(100_000, 1_000_000)})
 		if method == http.MethodPatch || method == http.MethodPost || method == http.MethodPut {
-			putIfNotExists(span.Attributes(), "http.request_content_length", random.IntBetween(10_000, 100_000))
+			putIfNotExists(span.Attributes(), attrHTTPRequestHeaderContentLength, []any{random.IntBetween(10_000, 100_000)})
 		}
 
 		if parent != nil && parent.Kind() == ptrace.SpanKindClient {
@@ -463,14 +458,14 @@ func (g *TemplatedGenerator) generateHTTPAttributes(tmpl *internalSpanTemplate, 
 				parent.Status().SetCode(ptrace.StatusCodeError)
 				parent.Status().SetMessage(http.StatusText(int(status)))
 			}
-			putIfNotExists(parent.Attributes(), "http.method", method)
-			putIfNotExists(parent.Attributes(), "http.request.header.accept", contentType)
-			putIfNotExists(parent.Attributes(), "http.status_code", status)
-			putIfNotExists(parent.Attributes(), "http.url", requestURL.String())
-			res, _ := span.Attributes().Get("http.response_content_length")
-			putIfNotExists(parent.Attributes(), "http.response_content_length", res.Int())
-			if req, found := span.Attributes().Get("http.request_content_length"); found {
-				putIfNotExists(span.Attributes(), "http.request_content_length", req.Int())
+			putIfNotExists(parent.Attributes(), attrHTTPMethod, method)
+			putIfNotExists(parent.Attributes(), attrHTTPRequestHeaderAccept, contentType)
+			putIfNotExists(parent.Attributes(), attrHTTPStatusCode, status)
+			putIfNotExists(parent.Attributes(), attrURL, requestURL.String())
+			res, _ := span.Attributes().Get(attrHTTPResponseHeaderContentLength)
+			putIfNotExists(span.Attributes(), attrHTTPResponseHeaderContentLength, res.AsRaw())
+			if req, found := span.Attributes().Get(attrHTTPRequestHeaderContentLength); found {
+				putIfNotExists(span.Attributes(), attrHTTPRequestHeaderContentLength, req.AsRaw())
 			}
 		}
 	}
@@ -809,4 +804,28 @@ func (g *TemplatedGenerator) initializeLinks(linkTemplates []Link, randomLinks, 
 	}
 
 	return internalLinks
+}
+
+func getHTTPStatusCode(attributes pcommon.Map) (int64, bool) {
+	st, found := attributes.Get(attrHTTPStatusCode)
+	if found {
+		return st.Int(), found
+	}
+	st, found = attributes.Get(attrHTTPStatusCodeOld)
+	if found {
+		return st.Int(), found
+	}
+	return 0, false
+}
+
+func getHTTPMethod(attributes pcommon.Map) (string, bool) {
+	m, found := attributes.Get(attrHTTPMethod)
+	if found {
+		return m.Str(), found
+	}
+	m, found = attributes.Get(attrHTTPMethodOld)
+	if found {
+		return m.Str(), found
+	}
+	return "", false
 }
