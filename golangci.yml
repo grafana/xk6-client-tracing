@@ -27,19 +27,18 @@ linters:
     gosec:
       excludes:
         - G404 # use of weak random number generator
-    staticcheck:
 
-exclusions:
-    generated: lax
+  exclusions:
+    warn-unused: true
     presets:
       - comments
       - common-false-positives
       - legacy
       - std-error-handling
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
 
 formatters:
   enable:
