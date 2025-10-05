@@ -180,11 +180,7 @@ func (g *ParameterizedGenerator) constructAttributes(size int) pcommon.Map {
 
 	// Fill the span with some random data
 	var currentSize int64
-	for {
-		if currentSize >= int64(size) {
-			break
-		}
-
+	for currentSize < int64(size) {
 		rKey := random.K6String(random.IntN(15) + 1)
 		rVal := random.K6String(random.IntN(15) + 1)
 		attrs.PutStr(rKey, rVal)

@@ -6,9 +6,7 @@ RUN apk add --no-cache \
     git \
     make
 
-RUN go install go.k6.io/xk6/cmd/xk6@latest \
-    && wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.64.6 \
-    && golangci-lint --version
+RUN go install go.k6.io/xk6/cmd/xk6@latest
 
 WORKDIR /opt/xk6-client-tracing
 COPY go.mod go.sum ./

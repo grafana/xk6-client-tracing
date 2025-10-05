@@ -1,34 +1,46 @@
-run:
-  timeout: 2m
+version: "2"
 
+run:
+  concurrency: 8
   issues-exit-code: 1
   tests: true
 
 linters:
   enable:
-    - errcheck
+    - errorlint
+    - forbidigo
+    - gocritic
+    - gosec
     - goconst
-    - gofmt
-    - goimports
-    - gosimple
-    - govet
-    - ineffassign
     - misspell
     - revive
-    - staticcheck
-    - typecheck
     - unconvert
     - unparam
-    - unused
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+    gosec:
+      excludes:
+        - G404 # use of weak random number generator
 
-linter-settings:
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
 
-issues:
-  exclude:
-    - "var-naming: don't use an underscore in package name"
-    - "redefines-builtin-id: redefinition of the built-in function max"
-    - "redefines-builtin-id: redefinition of the built-in function min"
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - unparam
+formatters:
+  enable:
+    - gofmt
+    - goimports

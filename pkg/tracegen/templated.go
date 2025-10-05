@@ -305,11 +305,8 @@ func (g *TemplatedGenerator) generateSpan(scopeSpans ptrace.ScopeSpans, tmpl *in
 	}
 
 	g.generateNetworkAttributes(tmpl, &span, parent)
-	if tmpl.attributeSemantics != nil {
-		switch *tmpl.attributeSemantics {
-		case SemanticsHTTP:
-			g.generateHTTPAttributes(tmpl, &span, parent)
-		}
+	if tmpl.attributeSemantics != nil && *tmpl.attributeSemantics == SemanticsHTTP {
+		g.generateHTTPAttributes(tmpl, &span, parent)
 	}
 
 	// generate events
@@ -379,9 +376,10 @@ func (g *TemplatedGenerator) generateNetworkAttributes(tmpl *internalSpanTemplat
 
 	putIfNotExists(span.Attributes(), "net.transport", tmpl.resource.transport)
 	putIfNotExists(span.Attributes(), "net.sock.family", "inet")
-	if tmpl.kind == ptrace.SpanKindClient {
+	switch tmpl.kind {
+	case ptrace.SpanKindClient:
 		putIfNotExists(span.Attributes(), "net.peer.port", random.Port())
-	} else if tmpl.kind == ptrace.SpanKindServer {
+	case ptrace.SpanKindServer:
 		putIfNotExists(span.Attributes(), "net.sock.host.addr", tmpl.resource.hostIP)
 		putIfNotExists(span.Attributes(), "net.host.name", tmpl.resource.hostName)
 		putIfNotExists(span.Attributes(), "net.host.port", tmpl.resource.hostPort)
