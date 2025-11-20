@@ -11,7 +11,7 @@ require (
 	github.com/grafana/sobek v0.0.0-20250723111835-dd8a13f0d439
 	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6 v1.2.3
-	go.opentelemetry.io/collector/component v1.42.0
+	go.opentelemetry.io/collector/component v1.46.0
 	go.opentelemetry.io/collector/component/componenttest v0.136.0
 	go.opentelemetry.io/collector/config/configgrpc v0.136.0
 	go.opentelemetry.io/collector/config/confighttp v0.136.0
