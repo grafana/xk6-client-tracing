@@ -148,6 +148,127 @@ func TestTemplatedGenerator_EventsLinks(t *testing.T) {
 	}
 }
 
+func TestTemplatedGenerator_ResourceAttributes(t *testing.T) {
+	template := TraceTemplate{
+		Spans: []SpanTemplate{
+			{
+				Service: "test-service",
+				Name:    ptr("test-span"),
+				ResourceAttributes: map[string]interface{}{
+					"k8s.pod.uid":        "pod-123",
+					"k8s.namespace.name": "default",
+					"custom.int":         42,
+					"custom.bool":        true,
+					"custom.float":       3.14,
+				},
+			},
+			{
+				Service: "another-service",
+				Name:    ptr("another-span"),
+				ResourceAttributes: map[string]interface{}{
+					"k8s.pod.uid":       "pod-456",
+					"k8s.deployment.name": "my-deployment",
+				},
+			},
+		},
+	}
+
+	gen, err := NewTemplatedGenerator(&template)
+	assert.NoError(t, err)
+
+	for i := 0; i < testRounds; i++ {
+		traces := gen.Traces()
+
+		// Should have 2 resource spans (one per service)
+		assert.Equal(t, 2, traces.ResourceSpans().Len())
+
+		// Check first resource span (test-service)
+		rs0 := traces.ResourceSpans().At(0)
+		attrs0 := rs0.Resource().Attributes()
+
+		// Verify standard attributes
+		serviceName, ok := attrs0.Get("service.name")
+		assert.True(t, ok)
+		assert.Equal(t, "test-service", serviceName.Str())
+
+		k6Attr, ok := attrs0.Get("k6")
+		assert.True(t, ok)
+		assert.Equal(t, "true", k6Attr.Str())
+
+		// Verify custom resource attributes
+		podUID, ok := attrs0.Get("k8s.pod.uid")
+		assert.True(t, ok, "k8s.pod.uid should exist")
+		assert.Equal(t, "pod-123", podUID.Str())
+
+		namespace, ok := attrs0.Get("k8s.namespace.name")
+		assert.True(t, ok, "k8s.namespace.name should exist")
+		assert.Equal(t, "default", namespace.Str())
+
+		customInt, ok := attrs0.Get("custom.int")
+		assert.True(t, ok, "custom.int should exist")
+		assert.Equal(t, int64(42), customInt.Int())
+
+		customBool, ok := attrs0.Get("custom.bool")
+		assert.True(t, ok, "custom.bool should exist")
+		assert.Equal(t, true, customBool.Bool())
+
+		customFloat, ok := attrs0.Get("custom.float")
+		assert.True(t, ok, "custom.float should exist")
+		assert.Equal(t, 3.14, customFloat.Double())
+
+		// Check second resource span (another-service)
+		rs1 := traces.ResourceSpans().At(1)
+		attrs1 := rs1.Resource().Attributes()
+
+		serviceName1, ok := attrs1.Get("service.name")
+		assert.True(t, ok)
+		assert.Equal(t, "another-service", serviceName1.Str())
+
+		podUID1, ok := attrs1.Get("k8s.pod.uid")
+		assert.True(t, ok, "k8s.pod.uid should exist on second resource")
+		assert.Equal(t, "pod-456", podUID1.Str())
+
+		deploymentName, ok := attrs1.Get("k8s.deployment.name")
+		assert.True(t, ok, "k8s.deployment.name should exist")
+		assert.Equal(t, "my-deployment", deploymentName.Str())
+
+		// Verify first resource doesn't have second resource's attributes
+		_, ok = attrs0.Get("k8s.deployment.name")
+		assert.False(t, ok, "k8s.deployment.name should not exist on first resource")
+	}
+}
+
+func TestTemplatedGenerator_ResourceAttributesEmpty(t *testing.T) {
+	// Test that spans without resource attributes still work
+	template := TraceTemplate{
+		Spans: []SpanTemplate{
+			{
+				Service: "test-service",
+				Name:    ptr("test-span"),
+				// No ResourceAttributes specified
+			},
+		},
+	}
+
+	gen, err := NewTemplatedGenerator(&template)
+	assert.NoError(t, err)
+
+	traces := gen.Traces()
+	assert.Equal(t, 1, traces.ResourceSpans().Len())
+
+	rs := traces.ResourceSpans().At(0)
+	attrs := rs.Resource().Attributes()
+
+	// Should still have standard attributes
+	serviceName, ok := attrs.Get("service.name")
+	assert.True(t, ok)
+	assert.Equal(t, "test-service", serviceName.Str())
+
+	k6Attr, ok := attrs.Get("k6")
+	assert.True(t, ok)
+	assert.Equal(t, "true", k6Attr.Str())
+}
+
 func attributesWithPrefix(span ptrace.Span, prefix string) int {
 	var count int
 	span.Attributes().Range(func(k string, _ pcommon.Value) bool {

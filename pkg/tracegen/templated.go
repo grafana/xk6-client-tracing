@@ -61,6 +61,8 @@ type SpanDefaults struct {
 type SpanTemplate struct {
 	// Service is used to set the service.name attribute of the corresponding resource span.
 	Service string `js:"service"`
+	// ResourceAttributes are added to the resource span (e.g., k8s.pod.uid, k8s.namespace.name).
+	ResourceAttributes map[string]interface{} `js:"resourceAttributes"`
 	// Name represents the name of the span. If empty, the name will be randomly generated.
 	Name *string `js:"name"`
 	// ParentIDX defines the index of the parent span in TraceTemplate.Spans. ParentIDX must be smaller than the
@@ -163,11 +165,12 @@ type internalSpanTemplate struct {
 }
 
 type internalResourceTemplate struct {
-	service   string
-	hostName  string
-	hostIP    string
-	transport string
-	hostPort  int
+	service            string
+	hostName           string
+	hostIP             string
+	transport          string
+	hostPort           int
+	resourceAttributes map[string]interface{}
 }
 
 type internalLinkTemplate struct {
@@ -232,6 +235,11 @@ func (g *TemplatedGenerator) generateResourceSpans(resSpanSlice ptrace.ResourceS
 	resSpans := resSpanSlice.AppendEmpty()
 	resSpans.Resource().Attributes().PutStr("k6", "true")
 	resSpans.Resource().Attributes().PutStr("service.name", tmpl.service)
+
+	// Add custom resource attributes
+	for k, v := range tmpl.resourceAttributes {
+		_ = resSpans.Resource().Attributes().PutEmpty(k).FromRaw(v)
+	}
 
 	scopeSpans := resSpans.ScopeSpans().AppendEmpty()
 	scopeSpans.Scope().SetName("k6-scope-name/" + random.String(15))
@@ -507,11 +515,12 @@ func (g *TemplatedGenerator) initialize(template *TraceTemplate) error {
 
 func (g *TemplatedGenerator) initializeResource(tmpl *SpanTemplate) *internalResourceTemplate {
 	return &internalResourceTemplate{
-		service:   tmpl.Service,
-		hostName:  fmt.Sprintf("%s.local", tmpl.Service),
-		hostIP:    random.IPAddr(),
-		hostPort:  random.Port(),
-		transport: "ip_tcp",
+		service:            tmpl.Service,
+		hostName:           fmt.Sprintf("%s.local", tmpl.Service),
+		hostIP:             random.IPAddr(),
+		hostPort:           random.Port(),
+		transport:          "ip_tcp",
+		resourceAttributes: tmpl.ResourceAttributes,
 	}
 }
 
