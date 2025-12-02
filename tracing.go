@@ -26,7 +26,6 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
-	"github.com/grafana/xk6-client-tracing/pkg/util"
 )
 
 type exporterType string
@@ -193,9 +192,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		exporterCfg.(*otlpexporter.Config).ClientConfig = configgrpc.ClientConfig{
 			Endpoint: cfg.Endpoint,
 			TLS:      tlsConfig,
-			Headers: util.MergeMaps(map[string]configopaque.String{
-				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
-			}, cfg.Headers),
+			Headers:  buildHeaders(cfg),
 		}
 	case exporterOTLPHTTP:
 		factory = otlphttpexporter.NewFactory()
@@ -203,9 +200,7 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		exporterCfg.(*otlphttpexporter.Config).ClientConfig = confighttp.ClientConfig{
 			Endpoint: cfg.Endpoint,
 			TLS:      tlsConfig,
-			Headers: util.MergeMaps(map[string]configopaque.String{
-				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
-			}, cfg.Headers),
+			Headers:  buildHeaders(cfg),
 		}
 	default:
 		return nil, fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
@@ -249,4 +244,14 @@ func (c *Client) Shutdown() error {
 
 func authorizationHeader(user, password string) configopaque.String {
 	return configopaque.String("Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)))
+}
+
+func buildHeaders(cfg *ClientConfig) configopaque.MapList {
+	headers := configopaque.MapList{
+		{Name: "Authorization", Value: authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password)},
+	}
+	for name, value := range cfg.Headers {
+		headers = append(headers, configopaque.Pair{Name: name, Value: value})
+	}
+	return headers
 }
