@@ -6,8 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/dop251/goja"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter"
+	"github.com/grafana/sobek"
 	"github.com/pkg/errors"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
@@ -27,7 +26,6 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/grafana/xk6-client-tracing/pkg/tracegen"
-	"github.com/grafana/xk6-client-tracing/pkg/util"
 )
 
 type exporterType string
@@ -55,16 +53,16 @@ type RootModule struct {
 func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	return &TracingModule{
 		vu:                  vu,
-		paramGenerators:     make(map[*goja.Object]*tracegen.ParameterizedGenerator),
-		templatedGenerators: make(map[*goja.Object]*tracegen.TemplatedGenerator),
+		paramGenerators:     make(map[*sobek.Object]*tracegen.ParameterizedGenerator),
+		templatedGenerators: make(map[*sobek.Object]*tracegen.TemplatedGenerator),
 	}
 }
 
 type TracingModule struct {
 	vu                  modules.VU
 	client              *Client
-	paramGenerators     map[*goja.Object]*tracegen.ParameterizedGenerator
-	templatedGenerators map[*goja.Object]*tracegen.TemplatedGenerator
+	paramGenerators     map[*sobek.Object]*tracegen.ParameterizedGenerator
+	templatedGenerators map[*sobek.Object]*tracegen.TemplatedGenerator
 }
 
 func (ct *TracingModule) Exports() modules.Exports {
@@ -84,7 +82,7 @@ func (ct *TracingModule) Exports() modules.Exports {
 	}
 }
 
-func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newClient(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	var cfg ClientConfig
 	err := rt.ExportTo(g.Argument(0), &cfg)
 	if err != nil {
@@ -101,7 +99,7 @@ func (ct *TracingModule) newClient(g goja.ConstructorCall, rt *goja.Runtime) *go
 	return rt.ToValue(ct.client).ToObject(rt)
 }
 
-func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newParameterizedGenerator(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	paramVal := g.Argument(0)
 	paramObj := paramVal.ToObject(rt)
 
@@ -120,7 +118,7 @@ func (ct *TracingModule) newParameterizedGenerator(g goja.ConstructorCall, rt *g
 	return rt.ToValue(generator).ToObject(rt)
 }
 
-func (ct *TracingModule) newTemplatedGenerator(g goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+func (ct *TracingModule) newTemplatedGenerator(g sobek.ConstructorCall, rt *sobek.Runtime) *sobek.Object {
 	tmplVal := g.Argument(0)
 	tmplObj := tmplVal.ToObject(rt)
 
@@ -178,55 +176,53 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		exporterCfg component.Config
 	)
 
-	tlsConfig := configtls.TLSClientSetting{
+	tlsConfig := configtls.ClientConfig{
 		Insecure:           cfg.TLS.Insecure,
 		InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
 		ServerName:         cfg.TLS.ServerName,
-		TLSSetting: configtls.TLSSetting{
+		Config: configtls.Config{
 			CAFile:   cfg.TLS.CAFile,
 			CertFile: cfg.TLS.CertFile,
 			KeyFile:  cfg.TLS.KeyFile,
 		},
 	}
 
+	headers := buildHeaders(cfg.Authentication.User, cfg.Authentication.Password, cfg.Headers)
+
 	switch cfg.Exporter {
 	case exporterNone, exporterOTLP:
 		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
-		exporterCfg.(*otlpexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
-			Endpoint:   cfg.Endpoint,
-			TLSSetting: tlsConfig,
-			Headers: util.MergeMaps(map[string]configopaque.String{
-				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
-			}, cfg.Headers),
+		exporterCfg.(*otlpexporter.Config).ClientConfig = configgrpc.ClientConfig{
+			Endpoint: cfg.Endpoint,
+			TLS:      tlsConfig,
+			Headers:  headers,
 		}
 	case exporterJaeger:
-		factory = jaegerexporter.NewFactory()
+		// Jaeger exporter was deprecated and removed from OpenTelemetry Collector.
+		// Use OTLP exporter instead - Jaeger supports OTLP natively since v1.35.
+		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
-		exporterCfg.(*jaegerexporter.Config).GRPCClientSettings = configgrpc.GRPCClientSettings{
-			Endpoint:   cfg.Endpoint,
-			TLSSetting: tlsConfig,
-			Headers: util.MergeMaps(map[string]configopaque.String{
-				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
-			}, cfg.Headers),
+		exporterCfg.(*otlpexporter.Config).ClientConfig = configgrpc.ClientConfig{
+			Endpoint: cfg.Endpoint,
+			TLS:      tlsConfig,
+			Headers:  headers,
 		}
 	case exporterOTLPHTTP:
 		factory = otlphttpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
-		exporterCfg.(*otlphttpexporter.Config).HTTPClientSettings = confighttp.HTTPClientSettings{
-			Endpoint:   cfg.Endpoint,
-			TLSSetting: tlsConfig,
-			Headers: util.MergeMaps(map[string]configopaque.String{
-				"Authorization": authorizationHeader(cfg.Authentication.User, cfg.Authentication.Password),
-			}, cfg.Headers),
+		exporterCfg.(*otlphttpexporter.Config).ClientConfig = confighttp.ClientConfig{
+			Endpoint: cfg.Endpoint,
+			TLS:      tlsConfig,
+			Headers:  headers,
 		}
 	default:
 		return nil, errors.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
 	}
 
-	exporter, err := factory.CreateTracesExporter(
+	exp, err := factory.CreateTraces(
 		context.Background(),
-		exporter.CreateSettings{
+		exporter.Settings{
 			TelemetrySettings: component.TelemetrySettings{
 				Logger:         zap.New(zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{}), zapcore.AddSync(os.Stdout), zap.DebugLevel)),
 				TracerProvider: tracenoop.NewTracerProvider(),
@@ -240,13 +236,13 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		return nil, errors.Wrap(err, "failed create exporter")
 	}
 
-	err = exporter.Start(vu.Context(), componenttest.NewNopHost())
+	err = exp.Start(vu.Context(), componenttest.NewNopHost())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start exporter")
 	}
 
 	return &Client{
-		exporter: exporter,
+		exporter: exp,
 		vu:       vu,
 	}, nil
 }
@@ -261,4 +257,15 @@ func (c *Client) Shutdown() error {
 
 func authorizationHeader(user, password string) configopaque.String {
 	return configopaque.String("Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)))
+}
+
+func buildHeaders(user, password string, extraHeaders map[string]configopaque.String) configopaque.MapList {
+	var headers configopaque.MapList
+	if user != "" || password != "" {
+		headers.Set("Authorization", authorizationHeader(user, password))
+	}
+	for name, value := range extraHeaders {
+		headers.Set(name, value)
+	}
+	return headers
 }

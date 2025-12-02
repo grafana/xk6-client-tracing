@@ -1,5 +1,4 @@
 version: "3"
-
 services:
   k6-tracing:
     image: ghcr.io/grafana/xk6-client-tracing:latest
