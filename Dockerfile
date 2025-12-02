@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS xk6-client-tracing-build
+FROM golang:1.25.4-alpine AS xk6-client-tracing-build
 
 RUN apk add --no-cache \
     build-base \
@@ -6,16 +6,17 @@ RUN apk add --no-cache \
     git \
     make
 
-RUN go install go.k6.io/xk6/cmd/xk6@latest \
-    && wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.59.0 \
-    && golangci-lint --version
+RUN go install go.k6.io/xk6/cmd/xk6@latest
 
 WORKDIR /opt/xk6-client-tracing
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN make build
+
+# Pin k6 version to match go.mod
+RUN xk6 build v1.4.2 --output ./k6-tracing \
+    --with github.com/grafana/xk6-client-tracing=. 
 
 FROM alpine:latest
 
