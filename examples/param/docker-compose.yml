@@ -2,7 +2,7 @@ version: "3"
 
 services:
   k6-tracing:
-    image: ghcr.io/grafana/xk6-client-tracing:latest
+    image: ghcr.io/grafana/xk6-client-tracing:latest@sha256:c176112df6a6aac970d54b0b2e2db950642378496c6967adc8a401179819fab0
     command:
       - run
       - /param.js
@@ -13,7 +13,7 @@ services:
     restart: always
 
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector:latest@sha256:b54b114431b2aa031c28f590507b4a17daabd59a4d797eb7fddd7988b4d3e3ea
     command:
       - --config=/collector-config.yaml
     volumes:
