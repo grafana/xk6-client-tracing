@@ -33,7 +33,9 @@ The configuration is an object with the following schema:
     // Credentials used for authentication (optional)
     authentication: { user: string, password: string },
     // Additional headers sent by the client (optional)
-    headers: { string : string }
+    headers: { string : string },
+    // Additional compression type that is supported by OTLP server
+    compression: string,
     // TLS configuration
     tls: {
         // Whether insecure connections are allowed (optional, default: false)

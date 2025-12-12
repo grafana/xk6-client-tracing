@@ -13,6 +13,7 @@ require (
 	go.k6.io/k6 v1.4.2
 	go.opentelemetry.io/collector/component v1.47.0
 	go.opentelemetry.io/collector/component/componenttest v0.141.0
+	go.opentelemetry.io/collector/config/configcompression v1.47.0
 	go.opentelemetry.io/collector/config/configgrpc v0.141.0
 	go.opentelemetry.io/collector/config/confighttp v0.141.0
 	go.opentelemetry.io/collector/config/configopaque v1.47.0
@@ -76,7 +77,6 @@ require (
 	go.opentelemetry.io/collector v0.141.0 // indirect
 	go.opentelemetry.io/collector/client v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v1.47.0 // indirect
-	go.opentelemetry.io/collector/config/configcompression v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/configoptional v1.47.0 // indirect
