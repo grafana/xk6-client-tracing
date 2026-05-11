@@ -2,6 +2,8 @@ module github.com/grafana/xk6-client-tracing
 
 go 1.25.4
 
+toolchain go1.25.10
+
 tool (
 	golang.org/x/tools/cmd/goimports
 	gotest.tools/gotestsum
