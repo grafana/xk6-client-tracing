@@ -10,7 +10,7 @@ tool (
 )
 
 require (
-	github.com/grafana/sobek v0.0.0-20251124090928-9a028a30ff58
+	github.com/grafana/sobek v0.0.0-20260429085637-a66d4790012b
 	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6 v1.4.2
 	go.opentelemetry.io/collector/component v1.47.0
@@ -33,7 +33,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/evanw/esbuild v0.27.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
