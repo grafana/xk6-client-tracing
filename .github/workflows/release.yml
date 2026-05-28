@@ -35,7 +35,7 @@ jobs:
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.0
 
       - name: Docker login
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v2.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
