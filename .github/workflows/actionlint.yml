@@ -57,6 +57,8 @@ jobs:
 
       - name: Run Actionlint
         run: |
+          # Turn on problem matchers so actionlint findings are annotated inline.
+          # See: https://github.com/rhysd/actionlint/blob/v1.7.12/docs/usage.md#problem-matchers
           echo "::add-matcher::.github/actionlint-matcher.json"
           ./actionlint -color
         shell: bash
