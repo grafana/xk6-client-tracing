@@ -12,6 +12,7 @@ import (
 	"go.k6.io/k6/js/modules"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -156,7 +157,9 @@ type ClientConfig struct {
 		User     string `js:"user"`
 		Password string `js:"password"`
 	}
-	Headers map[string]configopaque.String `js:"headers"`
+	Headers           map[string]configopaque.String      `js:"headers"`
+	Compression       configcompression.Type              `js:"compression"`
+	CompressionParams configcompression.CompressionParams `js:"compression_params"`
 }
 
 type Client struct {
@@ -190,17 +193,20 @@ func NewClient(cfg *ClientConfig, vu modules.VU) (*Client, error) {
 		factory = otlpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlpexporter.Config).ClientConfig = configgrpc.ClientConfig{
-			Endpoint: cfg.Endpoint,
-			TLS:      tlsConfig,
-			Headers:  buildHeaders(cfg),
+			Endpoint:    cfg.Endpoint,
+			TLS:         tlsConfig,
+			Headers:     buildHeaders(cfg),
+			Compression: cfg.Compression,
 		}
 	case exporterOTLPHTTP:
 		factory = otlphttpexporter.NewFactory()
 		exporterCfg = factory.CreateDefaultConfig()
 		exporterCfg.(*otlphttpexporter.Config).ClientConfig = confighttp.ClientConfig{
-			Endpoint: cfg.Endpoint,
-			TLS:      tlsConfig,
-			Headers:  buildHeaders(cfg),
+			Endpoint:          cfg.Endpoint,
+			TLS:               tlsConfig,
+			Headers:           buildHeaders(cfg),
+			Compression:       cfg.Compression,
+			CompressionParams: cfg.CompressionParams,
 		}
 	default:
 		return nil, fmt.Errorf("failed to init exporter: unknown exporter type %s", cfg.Exporter)
