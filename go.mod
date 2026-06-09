@@ -18,7 +18,7 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v1.47.0
 	go.opentelemetry.io/collector/config/configgrpc v0.141.0
 	go.opentelemetry.io/collector/config/confighttp v0.141.0
-	go.opentelemetry.io/collector/config/configopaque v1.47.0
+	go.opentelemetry.io/collector/config/configopaque v1.60.0
 	go.opentelemetry.io/collector/config/configtls v1.47.0
 	go.opentelemetry.io/collector/exporter v1.47.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.141.0
@@ -26,7 +26,7 @@ require (
 	go.opentelemetry.io/collector/pdata v1.47.0
 	go.opentelemetry.io/otel/metric v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -44,7 +44,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
-	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/go-tpm v0.9.7 // indirect
@@ -52,13 +52,13 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
-	github.com/hashicorp/go-version v1.8.0 // indirect
+	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
-	github.com/knadh/koanf/v2 v2.3.0 // indirect
+	github.com/knadh/koanf/v2 v2.3.5 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -84,7 +84,7 @@ require (
 	go.opentelemetry.io/collector/config/confignet v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/configoptional v1.47.0 // indirect
 	go.opentelemetry.io/collector/config/configretry v1.47.0 // indirect
-	go.opentelemetry.io/collector/confmap v1.47.0 // indirect
+	go.opentelemetry.io/collector/confmap v1.60.0 // indirect
 	go.opentelemetry.io/collector/confmap/xconfmap v0.141.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.47.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.141.0 // indirect
@@ -97,7 +97,7 @@ require (
 	go.opentelemetry.io/collector/extension/extensionauth v1.47.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.141.0 // indirect
 	go.opentelemetry.io/collector/extension/xextension v0.141.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.47.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.60.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.141.0 // indirect
 	go.opentelemetry.io/collector/pdata/xpdata v0.141.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.47.0 // indirect
