@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/grafana/sobek"
-	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/v2/js/common"
+	"go.k6.io/k6/v2/js/modules"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configcompression"
