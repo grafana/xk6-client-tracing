@@ -2,18 +2,17 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
       http:
-  jaeger:
-    protocols:
-      grpc:
+        endpoint: 0.0.0.0:4318
 exporters:
-  logging:
-    loglevel: debug
+  debug:
+    verbosity: detailed
     sampling_initial: 5
     sampling_thereafter: 200
 service:
   pipelines:
     traces:
-      exporters: ["logging"]
+      exporters: ["debug"]
       processors: []
-      receivers: ["otlp", "jaeger"]
+      receivers: ["otlp"]
