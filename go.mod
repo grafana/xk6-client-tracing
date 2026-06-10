@@ -24,8 +24,8 @@ require (
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.141.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.141.0
 	go.opentelemetry.io/collector/pdata v1.47.0
-	go.opentelemetry.io/otel/metric v1.43.0
-	go.opentelemetry.io/otel/trace v1.43.0
+	go.opentelemetry.io/otel/metric v1.44.0
+	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.28.0
 )
 
@@ -104,7 +104,7 @@ require (
 	go.opentelemetry.io/collector/pipeline/xpipeline v0.141.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.43.0 // indirect
