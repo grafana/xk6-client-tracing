@@ -32,7 +32,7 @@ jobs:
           cache-binary: false
 
       - name: Docker set up qemu
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.0
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v3.0
 
       - name: Docker login
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v2.0
