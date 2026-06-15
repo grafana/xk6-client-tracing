@@ -15,7 +15,7 @@ require (
 	go.k6.io/k6/v2 v2.0.0
 	go.opentelemetry.io/collector/component v1.59.0
 	go.opentelemetry.io/collector/component/componenttest v0.153.0
-	go.opentelemetry.io/collector/config/configcompression v1.59.0
+	go.opentelemetry.io/collector/config/configcompression v1.60.0
 	go.opentelemetry.io/collector/config/configgrpc v0.153.0
 	go.opentelemetry.io/collector/config/confighttp v0.153.0
 	go.opentelemetry.io/collector/config/configopaque v1.59.0
