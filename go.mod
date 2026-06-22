@@ -22,7 +22,7 @@ require (
 	go.opentelemetry.io/collector/config/configtls v1.60.0
 	go.opentelemetry.io/collector/exporter v1.60.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.154.0
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.153.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.154.0
 	go.opentelemetry.io/collector/pdata v1.60.0
 	go.opentelemetry.io/otel/metric v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
