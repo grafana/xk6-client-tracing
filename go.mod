@@ -17,12 +17,12 @@ require (
 	go.opentelemetry.io/collector/component/componenttest v0.154.0
 	go.opentelemetry.io/collector/config/configcompression v1.60.0
 	go.opentelemetry.io/collector/config/configgrpc v0.154.0
-	go.opentelemetry.io/collector/config/confighttp v0.153.0
+	go.opentelemetry.io/collector/config/confighttp v0.154.0
 	go.opentelemetry.io/collector/config/configopaque v1.60.0
 	go.opentelemetry.io/collector/config/configtls v1.60.0
 	go.opentelemetry.io/collector/exporter v1.60.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.154.0
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.153.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.154.0
 	go.opentelemetry.io/collector/pdata v1.60.0
 	go.opentelemetry.io/otel/metric v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
@@ -67,7 +67,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/mstoykov/atlas v0.0.0-20220811071828-388f114305dd // indirect
-	github.com/pierrec/lz4/v4 v4.1.26 // indirect
+	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
@@ -101,7 +101,7 @@ require (
 	go.opentelemetry.io/collector/pipeline v1.60.0 // indirect
 	go.opentelemetry.io/collector/pipeline/xpipeline v0.154.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.69.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0 // indirect
