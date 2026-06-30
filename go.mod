@@ -23,7 +23,7 @@ require (
 	go.opentelemetry.io/collector/exporter v1.60.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.154.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.154.0
-	go.opentelemetry.io/collector/pdata v1.60.0
+	go.opentelemetry.io/collector/pdata v1.61.0
 	go.opentelemetry.io/otel/metric v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.28.0
@@ -94,7 +94,7 @@ require (
 	go.opentelemetry.io/collector/extension/extensionauth v1.60.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.154.0 // indirect
 	go.opentelemetry.io/collector/extension/xextension v0.154.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.60.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.61.0 // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.154.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.154.0 // indirect
 	go.opentelemetry.io/collector/pdata/xpdata v0.154.0 // indirect
