@@ -2,7 +2,7 @@ module github.com/grafana/xk6-client-tracing
 
 go 1.25.4
 
-toolchain go1.25.11
+toolchain go1.26.6
 
 tool (
 	golang.org/x/tools/cmd/goimports
