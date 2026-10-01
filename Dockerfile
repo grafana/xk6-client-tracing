@@ -1,4 +1,4 @@
-FROM golang:1.26.4-alpine AS xk6-client-tracing-build
+FROM golang:1.27.1-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS xk6-client-tracing-build
 
 RUN apk add --no-cache \
     build-base \
