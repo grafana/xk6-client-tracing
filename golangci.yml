@@ -17,6 +17,8 @@ linters:
     - unconvert
     - unparam
   settings:
+    goconst:
+      ignore-tests: true
     revive:
       rules:
         - name: exported
